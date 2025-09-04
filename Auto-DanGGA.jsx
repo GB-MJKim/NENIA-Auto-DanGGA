@@ -17,14 +17,18 @@ var CONFIG = {
         CLIP_GROUP_NAME: "<Clip Group-img>"
     },
     
-    TEXT_FRAME_NAMES: {
-        PRODUCT_NAME: "상품명",
-        CAPACITY: "용량",
-        INGREDIENTS: "원재료",
-        STORAGE: "보관방법"
-    },
     
-    BASIC_FIELDS: ["페이지", "순서", "타이틀", "상품명", "용량", "원재료", "보관방법"],
+    // ✅ 새로 추가된 분류 기준
+    PRODUCT_TAGS: ["자연해동", "D-7발주", "개별포장"],
+    CERTIFICATION_MARKS: ["HACCP", "유기가공식품", "전통식품", "품질인증",
+                         "무항생제", "무농약가공식품", "동물복지"],
+    SPECIAL_ITEMS: ["NEW"],
+    
+    // ✅ 기본 필드에 새 필드들 추가
+    BASIC_FIELDS: [
+        "페이지", "순서", "타이틀", "상품명", "용량", "원재료", "보관방법",
+        "설명란", "서브단가명", "서브단가", "메인단가명", "메인단가", "개당단가", "알러지"  // 새로 추가
+    ],
     
     STORAGE_COLORS: {
         "냉동": {c: 100, m: 40, y: 0, k: 0},
@@ -35,7 +39,7 @@ var CONFIG = {
     LAYOUT_OPTIONS: {
         CERTIFICATION: {
             LEFT_TO_RIGHT: "cert_ltr",
-            RIGHT_TO_LEFT: "cert_rtl", 
+            RIGHT_TO_LEFT: "cert_rtl",
             TOP_TO_BOTTOM: "cert_ttb"
         },
         ADDITIONAL_TEXT: {
@@ -98,8 +102,210 @@ var Utils = {
     safeLength: function(value) {
         if (typeof value !== "string") return 0;
         return value.length;
+    },
+
+    isProductTag: function(fieldName) {
+        return Utils.arrayContains(CONFIG.PRODUCT_TAGS, fieldName);
+    },
+    
+    isCertificationMark: function(fieldName) {
+        return Utils.arrayContains(CONFIG.CERTIFICATION_MARKS, fieldName);
     }
 };
+
+// ===== ENHANCED UI DIALOG 모듈 =====
+// ===== ENHANCED UI DIALOG 모듈 (컴팩트 버전) =====
+// ===== ENHANCED UI DIALOG 모듈 (개선된 별도 선택) =====
+var EnhancedUI = {
+    
+    createMainDialog: function(availablePages, pageData, headers) {
+        var dialog = new Window("dialog", "🚀 네니아 동적 자동화 - 설정");
+        dialog.orientation = "column";
+        dialog.alignChildren = ["fill", "top"];
+        dialog.spacing = 12;
+        dialog.margins = 16;
+        
+        // ===== 프로젝트 정보 섹션 (간소화) =====
+        var infoPanel = dialog.add("panel", undefined, "📋 프로젝트 정보");
+        infoPanel.orientation = "column";
+        infoPanel.alignChildren = ["fill", "top"];
+        infoPanel.margins = 12;
+        
+        var infoGroup = infoPanel.add("group");
+        infoGroup.add("statictext", undefined, "✅ CSV 헤더 감지: " + headers.length + "개");
+        
+        var headerText = infoPanel.add("edittext", undefined, Utils.arrayToString(headers, ", "), {readonly: true});
+        headerText.preferredSize = [450, 20];
+        
+        // ===== 페이지 선택 섹션 (텍스트 입력) =====
+        var pagePanel = dialog.add("panel", undefined, "📄 페이지 선택");
+        pagePanel.orientation = "row";
+        pagePanel.alignChildren = ["fill", "center"];
+        pagePanel.margins = 12;
+        
+        pagePanel.add("statictext", undefined, "페이지 번호:");
+        var pageInput = pagePanel.add("edittext", undefined, availablePages[0].toString());
+        pageInput.characters = 5;
+        
+        var availablePagesText = pagePanel.add("statictext", undefined, "사용 가능: " + Utils.arrayToString(availablePages, ", "));
+        availablePagesText.graphics.foregroundColor = availablePagesText.graphics.newPen(availablePagesText.graphics.PenType.SOLID_COLOR, [0.5, 0.5, 0.5], 1);
+        
+        // ===== 배치 방식 선택 섹션 (별도 선택) =====
+        var layoutPanel = dialog.add("panel", undefined, "🎨 배치 방식 선택");
+        layoutPanel.orientation = "column";
+        layoutPanel.alignChildren = ["fill", "top"];
+        layoutPanel.margins = 12;
+        
+        // 인증정보 배치 선택
+        var certGroup = layoutPanel.add("group");
+        certGroup.orientation = "column";
+        certGroup.alignChildren = ["left", "top"];
+        certGroup.spacing = 5;
+        
+        certGroup.add("statictext", undefined, "🏆 인증정보 배치:");
+        var certRadioGroup = certGroup.add("group");
+        certRadioGroup.orientation = "row";
+        certRadioGroup.spacing = 15;
+        
+        var certLTR = certRadioGroup.add("radiobutton", undefined, "좌→우");
+        var certRTL = certRadioGroup.add("radiobutton", undefined, "우→좌");
+        var certTTB = certRadioGroup.add("radiobutton", undefined, "상→하");
+        
+        certLTR.value = true; // 기본 선택
+        
+        // 상품태그 배치 선택
+        var tagGroup = layoutPanel.add("group");
+        tagGroup.orientation = "column";
+        tagGroup.alignChildren = ["left", "top"];
+        tagGroup.spacing = 5;
+        
+        tagGroup.add("statictext", undefined, "🏷️ 상품태그 배치:");
+        var tagRadioGroup = tagGroup.add("group");
+        tagRadioGroup.orientation = "row";
+        tagRadioGroup.spacing = 15;
+        
+        var tagLTR = tagRadioGroup.add("radiobutton", undefined, "좌→우");
+        var tagTTB = tagRadioGroup.add("radiobutton", undefined, "상→하");
+        
+        tagTTB.value = true; // 기본 선택
+        
+        // ===== 미리보기 섹션 (컴팩트) =====
+        var previewPanel = dialog.add("panel", undefined, "🔍 미리보기");
+        previewPanel.orientation = "column";
+        previewPanel.alignChildren = ["fill", "top"];
+        previewPanel.margins = 12;
+        
+        var previewText = previewPanel.add("edittext", undefined, "", {readonly: true, multiline: true});
+        previewText.preferredSize = [450, 150];
+        
+        // 미리보기 업데이트 함수
+        var updatePreview = function() {
+            var inputPage = parseInt(pageInput.text);
+            if (isNaN(inputPage)) {
+                previewText.text = "❌ 올바른 페이지 번호를 입력하세요.";
+                return;
+            }
+            
+            // 페이지 존재 확인
+            var pageExists = false;
+            for (var i = 0; i < availablePages.length; i++) {
+                if (availablePages[i] === inputPage) {
+                    pageExists = true;
+                    break;
+                }
+            }
+            
+            if (!pageExists) {
+                previewText.text = "❌ 존재하지 않는 페이지입니다. 사용 가능: " + Utils.arrayToString(availablePages, ", ");
+                return;
+            }
+            
+            var productDataArray = NeniaGroupAutomation.getTargetPageData(pageData, inputPage);
+            var preview = NeniaGroupAutomation.generatePreview(inputPage, productDataArray, headers);
+            previewText.text = preview;
+        };
+        
+        // 페이지 입력 이벤트 연결
+        pageInput.onChanging = updatePreview;
+        
+        // 초기 미리보기 표시
+        updatePreview();
+        
+        // ===== 버튼 섹션 =====
+        var buttonGroup = dialog.add("group");
+        buttonGroup.alignment = "center";
+        buttonGroup.spacing = 15;
+        
+        var okButton = buttonGroup.add("button", undefined, "✅ 실행", {name: "ok"});
+        var cancelButton = buttonGroup.add("button", undefined, "❌ 취소", {name: "cancel"});
+        
+        // 버튼 크기 설정
+        okButton.preferredSize = [80, 30];
+        cancelButton.preferredSize = [80, 30];
+        
+        okButton.onClick = function() {
+            // 입력 유효성 검사
+            var inputPage = parseInt(pageInput.text);
+            if (isNaN(inputPage)) {
+                alert("❌ 올바른 페이지 번호를 입력하세요.");
+                return;
+            }
+            
+            var pageExists = false;
+            for (var i = 0; i < availablePages.length; i++) {
+                if (availablePages[i] === inputPage) {
+                    pageExists = true;
+                    break;
+                }
+            }
+            
+            if (!pageExists) {
+                alert("❌ 존재하지 않는 페이지입니다.\n사용 가능한 페이지: " + Utils.arrayToString(availablePages, ", "));
+                return;
+            }
+            
+            dialog.close(1);
+        };
+        
+        cancelButton.onClick = function() {
+            dialog.close(0);
+        };
+        
+        // ===== 결과 수집 및 반환 =====
+        if (dialog.show() == 1) {
+            var selectedPage = parseInt(pageInput.text);
+            
+            // 선택된 인증정보 배치 찾기
+            var certLayout = null;
+            if (certLTR.value) {
+                certLayout = CONFIG.LAYOUT_OPTIONS.CERTIFICATION.LEFT_TO_RIGHT;
+            } else if (certRTL.value) {
+                certLayout = CONFIG.LAYOUT_OPTIONS.CERTIFICATION.RIGHT_TO_LEFT;
+            } else if (certTTB.value) {
+                certLayout = CONFIG.LAYOUT_OPTIONS.CERTIFICATION.TOP_TO_BOTTOM;
+            }
+            
+            // 선택된 상품태그 배치 찾기
+            var tagLayout = null;
+            if (tagLTR.value) {
+                tagLayout = CONFIG.LAYOUT_OPTIONS.ADDITIONAL_TEXT.LEFT_TO_RIGHT;
+            } else if (tagTTB.value) {
+                tagLayout = CONFIG.LAYOUT_OPTIONS.ADDITIONAL_TEXT.TOP_TO_BOTTOM;
+            }
+            
+            return {
+                page: selectedPage,
+                layout: {
+                    certification: certLayout,
+                    additionalText: tagLayout
+                }
+            };
+        }
+        
+        return null;
+    }
+};
+
 
 // ===== LAYOUT SELECTOR 모듈 =====
 var LayoutSelector = {
@@ -505,24 +711,40 @@ var DynamicProcessor = {
                 }
                 
                 if (shouldShow) {
-                    // NEW는 즉시 표시
                     if (fieldName === 'NEW') {
                         itemResult.item.opacity = 100;
                         Utils.log('NEW 즉시 표시');
                     } else {
-                        // 분류하여 저장
-                        if (typeof value === "boolean") {
-                            certificationItems.push({
-                                name: fieldName,
-                                item: itemResult.item,
-                                type: itemResult.type
-                            });
-                        } else {
+                        // ✅ 명시적 분류 기준 적용
+                        if (Utils.arrayContains(CONFIG.PRODUCT_TAGS, fieldName)) {
                             additionalItems.push({
                                 name: fieldName,
                                 item: itemResult.item,
                                 type: itemResult.type
                             });
+                            Utils.log('상품 태그로 분류: ' + fieldName);
+                        } else if (Utils.arrayContains(CONFIG.CERTIFICATION_MARKS, fieldName)) {
+                            certificationItems.push({
+                                name: fieldName,
+                                item: itemResult.item,
+                                type: itemResult.type
+                            });
+                            Utils.log('인증마크로 분류: ' + fieldName);
+                        } else {
+                            // 기존 로직 (타입 기반 분류)
+                            if (typeof value === "boolean") {
+                                certificationItems.push({
+                                    name: fieldName,
+                                    item: itemResult.item,
+                                    type: itemResult.type
+                                });
+                            } else {
+                                additionalItems.push({
+                                    name: fieldName,
+                                    item: itemResult.item,
+                                    type: itemResult.type
+                                });
+                            }
                         }
                     }
                 }
@@ -548,12 +770,12 @@ var DynamicProcessor = {
         var startX = baseItem.position[0];
         var startY = baseItem.position[1];
         var spacing = (category === "인증마크") ? CONFIG.LAYOUT_SPACING.CERTIFICATION : CONFIG.LAYOUT_SPACING.ADDITIONAL_TEXT;
-
+        
         Utils.log(category + ' 배치: ' + layoutType);
-
-        if (layoutType === CONFIG.LAYOUT_OPTIONS.CERTIFICATION.LEFT_TO_RIGHT || 
+        
+        // ✅ 좌→우 배치 (인증마크 & 상품태그 모두)
+        if (layoutType === CONFIG.LAYOUT_OPTIONS.CERTIFICATION.LEFT_TO_RIGHT ||
             layoutType === CONFIG.LAYOUT_OPTIONS.ADDITIONAL_TEXT.LEFT_TO_RIGHT) {
-            // 좌→우
             var currentX = startX;
             for (var i = 0; i < items.length; i++) {
                 var item = items[i];
@@ -563,10 +785,19 @@ var DynamicProcessor = {
                 currentX += itemWidth + spacing;
                 Utils.log(category + ' 좌→우: ' + item.name);
             }
-        } else if (layoutType === CONFIG.LAYOUT_OPTIONS.CERTIFICATION.RIGHT_TO_LEFT) {
-            // 우→좌
-            var currentX = startX;
-            for (var i = items.length - 1; i >= 0; i--) {
+        }
+        // ✅ 우→좌 배치 (인증마크만) - 수정된 로직
+        else if (layoutType === CONFIG.LAYOUT_OPTIONS.CERTIFICATION.RIGHT_TO_LEFT) {
+            // 전체 폭 계산
+            var totalWidth = 0;
+            for (var k = 0; k < items.length; k++) {
+                totalWidth += this.getItemWidth(items[k].item);
+                if (k < items.length - 1) totalWidth += spacing;
+            }
+            
+            // 우측 끝부터 배치
+            var currentX = startX - totalWidth;
+            for (var i = 0; i < items.length; i++) {
                 var item = items[i];
                 item.item.position = [currentX, startY];
                 item.item.opacity = 100;
@@ -574,8 +805,10 @@ var DynamicProcessor = {
                 currentX += itemWidth + spacing;
                 Utils.log(category + ' 우→좌: ' + item.name);
             }
-        } else {
-            // 상→하
+        }
+        // ✅ 상→하 배치 (인증마크 & 상품태그 모두)
+        else if (layoutType === CONFIG.LAYOUT_OPTIONS.CERTIFICATION.TOP_TO_BOTTOM ||
+                 layoutType === CONFIG.LAYOUT_OPTIONS.ADDITIONAL_TEXT.TOP_TO_BOTTOM) {
             var currentY = startY;
             for (var i = 0; i < items.length; i++) {
                 var item = items[i];
@@ -608,7 +841,9 @@ var DynamicProcessor = {
 };
 
 // ===== TEXT PROCESSOR 모듈 =====
+// ===== TEXT PROCESSOR 모듈 =====
 var TextProcessor = {
+    
     applyStorageColor: function(textFrame, storageMethod) {
         try {
             var storage = Utils.safeTrim(storageMethod);
@@ -626,43 +861,38 @@ var TextProcessor = {
                 cmykColor.yellow = 0;
                 cmykColor.black = 100;
             }
-
+            
             textFrame.textRange.characterAttributes.fillColor = cmykColor;
             Utils.log('색상 적용: ' + storage);
         } catch (e) {
             Utils.log('색상 적용 오류: ' + e.message);
         }
     },
-
+    
+    // ✅ 완전 자동화된 기본 필드 업데이트
     updateBasicFields: function(productGroup, productData) {
         Utils.log('기본 필드 업데이트: ' + productGroup.name);
         
-        var productNameFrame = GroupManager.findTextFrameInGroup(CONFIG.TEXT_FRAME_NAMES.PRODUCT_NAME, productGroup);
-        if (productNameFrame) {
-            productNameFrame.contents = productData.상품명 || '';
-            Utils.log('상품명 업데이트: ' + productData.상품명);
-        }
-
-        var capacityFrame = GroupManager.findTextFrameInGroup(CONFIG.TEXT_FRAME_NAMES.CAPACITY, productGroup);
-        if (capacityFrame) {
-            capacityFrame.contents = productData.용량 || '';
-            Utils.log('용량 업데이트: ' + productData.용량);
-        }
-
-        var ingredientsFrame = GroupManager.findTextFrameInGroup(CONFIG.TEXT_FRAME_NAMES.INGREDIENTS, productGroup);
-        if (ingredientsFrame) {
-            ingredientsFrame.contents = productData.원재료 || '';
-            Utils.log('원재료 업데이트');
-        }
-
-        var storageFrame = GroupManager.findTextFrameInGroup(CONFIG.TEXT_FRAME_NAMES.STORAGE, productGroup);
-        if (storageFrame && productData.보관방법) {
-            storageFrame.contents = productData.보관방법;
-            this.applyStorageColor(storageFrame, productData.보관방법);
-            Utils.log('보관방법 업데이트: ' + productData.보관방법);
+        // 기본 필드들을 자동으로 순회 처리
+        for (var i = 0; i < CONFIG.BASIC_FIELDS.length; i++) {
+            var fieldName = CONFIG.BASIC_FIELDS[i];
+            
+            // CSV 컬럼명 = 일러스트 텍스트프레임 이름
+            var textFrame = GroupManager.findTextFrameInGroup(fieldName, productGroup);
+            if (textFrame) {
+                var value = productData[fieldName] || '';
+                textFrame.contents = value;
+                Utils.log(fieldName + ' 업데이트: ' + value);
+                
+                // 보관방법은 특별히 색상 적용
+                if (fieldName === '보관방법' && value) {
+                    this.applyStorageColor(textFrame, value);
+                }
+            }
         }
     }
 };
+
 
 // ===== IMAGE LINKER 모듈 =====
 var ImageLinker = {
@@ -839,6 +1069,28 @@ var NeniaGroupAutomation = {
         return true;
     },
 
+    // ✅ 기존 selectTargetPage와 LayoutSelector 함수들을 대체
+    getUserInput: function(allData, headers) {
+        var pages = [];
+        var pageCount = {};
+        
+        // 페이지 목록 수집
+        for (var i = 0; i < allData.length; i++) {
+            var page = allData[i].페이지;
+            if (pageCount[page]) {
+                pageCount[page]++;
+            } else {
+                pageCount[page] = 1;
+                pages.push(page);
+            }
+        }
+        
+        pages.sort(function(a, b) { return a - b; });
+        
+        // 통합 대화상자 표시
+        return EnhancedUI.createMainDialog(pages, allData, headers);
+    },
+    /*
     selectTargetPage: function(allData) {
         var pages = [];
         var pageCount = {};
@@ -879,6 +1131,7 @@ var NeniaGroupAutomation = {
 
         return pageNum;
     },
+    */
 
     generatePreview: function(pageNumber, productDataArray, headers) {
         var preview = "네니아 동적 자동화 - 페이지 " + pageNumber + ":\n\n";
@@ -909,7 +1162,7 @@ var NeniaGroupAutomation = {
         preview += "🔍 감지된 헤더: " + Utils.arrayToString(headers, ", ") + "\n\n";
         return preview;
     },
-
+    
     getLayoutDescription: function(layoutConfig) {
         var certDesc = "";
         var addDesc = "";
@@ -930,7 +1183,7 @@ var NeniaGroupAutomation = {
 
         return certDesc + ", " + addDesc;
     },
-
+    
     run: function() {
         try {
             Utils.log("네니아 동적 자동화 시작");
@@ -953,26 +1206,31 @@ var NeniaGroupAutomation = {
                 return;
             }
 
-            // 3. 페이지 선택
-            var targetPage = this.selectTargetPage(csvResult.data);
-            if (targetPage === null) return;
+            // // 3. 페이지 선택
+            // var targetPage = this.selectTargetPage(csvResult.data);
+            // if (targetPage === null) return;
 
-            // 4. 레이아웃 선택
-            var layoutConfig = LayoutSelector.getUserLayoutChoice();
+            // // 4. 레이아웃 선택
+            // var layoutConfig = LayoutSelector.getUserLayoutChoice();
 
-            // 5. 해당 페이지 데이터 필터링
+            // 3. ✅ 새로운 통합 UI로 페이지와 레이아웃 선택
+            var userInput = this.getUserInput(csvResult.data, csvResult.headers);
+            if (!userInput) return;
+            
+            var targetPage = userInput.page;
+            var layoutConfig = userInput.layout;
+
+            // 4. 해당 페이지 데이터 필터링
             var productDataArray = this.getTargetPageData(csvResult.data, targetPage);
 
-            // 6. 미리보기 및 확인
-            var preview = this.generatePreview(targetPage, productDataArray, csvResult.headers);
+          
+            // 5. 최종 확인 대화상자
             var layoutDescription = this.getLayoutDescription(layoutConfig);
-            
-            if (!confirm(preview + "위 내용으로 동적 자동화를 실행하시겠습니까?\n\n" +
-                "✅ CSV 헤더 자동 인식\n" +
-                "✅ 동적 요소 처리\n" +
-                "✅ 클리핑 그룹 정확 처리\n" +
-                "✅ ExtendScript 완전 호환\n" +
-                "✅ 선택된 배치: " + layoutDescription)) {
+            if (!confirm("🚀 네니아 동적 자동화 실행\n\n" +
+                        "📄 선택된 페이지: " + targetPage + "\n" +
+                        "🎨 배치 방식: " + layoutDescription + "\n" +
+                        "📝 처리할 상품: " + productDataArray.length + "개\n\n" +
+                        "위 설정으로 자동화를 실행하시겠습니까?")) {
                 return;
             }
 
