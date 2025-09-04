@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 네니아 자동화 CONFIG 편집기</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .version-display {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            display: none;
+        }
+        
+        .main-content {
+            padding: 30px;
+        }
+        
+        .file-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border: 2px dashed #dee2e6;
+        }
+        
+        .file-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .file-input-wrapper:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+        
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        .config-section {
+            display: none;
+        }
+        
+        .section-card {
+            background: #fff;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .section-header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 20px;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .section-content {
+            padding: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .array-container {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f8f9fa;
+        }
+        
+        .array-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .array-item input {
+            flex: 1;
+            margin-right: 10px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn-add {
+            background: #17a2b8;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .btn-add:hover {
+            background: #138496;
+        }
+        
+        .color-inputs {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        
+        .color-inputs input {
+            text-align: center;
+        }
+        
+        /* CMYK 라벨 스타일 */
+        .color-label {
+            text-align: center;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+        
+        .color-input-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .actions {
+            text-align: center;
+            padding: 30px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .actions .btn {
+            margin: 0 10px;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .status-message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .file-info {
+            margin-top: 15px;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        /* 드래그 가능한 초기화 버튼 스타일 */
+        .floating-reset-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: move;
+            box-shadow: 0 4px 20px rgba(40, 167, 69, 0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .floating-reset-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(40, 167, 69, 0.6);
+        }
+        
+        .floating-reset-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .floating-reset-btn.dragging {
+            transform: rotate(5deg);
+            box-shadow: 0 8px 30px rgba(40, 167, 69, 0.8);
+        }
+        
+        /* 툴팁 스타일 */
+        .floating-reset-btn::after {
+            content: "기본값 초기화";
+            position: absolute;
+            right: 70px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .floating-reset-btn:hover::after {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div id="versionDisplay" class="version-display">📦 Version: v0.0</div>
+            <h1>🚀 네니아 자동화 CONFIG 편집기</h1>
+            <p>jsx 파일의 설정을 쉽게 수정하세요</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="file-section">
+                <h3 style="margin-bottom: 15px;">📁 스크립트 파일 선택</h3>
+                <div class="file-actions">
+                    <div class="file-input-wrapper" onclick="document.getElementById('fileInput').click()">
+                        <input type="file" id="fileInput" accept=".jsx" style="display: none;" />
+                        📂 Auto-DanGGA.jsx 파일 선택
+                    </div>
+                </div>
+                <div id="fileInfo" class="file-info"></div>
+                <p style="margin-top: 10px; color: #6c757d; font-size: 14px;">
+                    ※ jsx 확장자 파일만 선택 가능합니다. 파일을 선택하면 실제 설정값을 불러옵니다.
+                </p>
+            </div>
+            
+            <div id="configSection" class="config-section">
+                <div class="row">
+                    <!-- 폴더 설정 -->
+                    <div class="section-card">
+                        <div class="section-header">📁 폴더 설정</div>
+                        <div class="section-content">
+                            <div class="form-group">
+                                <label class="form-label">작업 폴더명</label>
+                                <input type="text" id="baseFolderName" class="form-input" placeholder="작업파일">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">이미지 폴더명</label>
+                                <input type="text" id="imgFolderName" class="form-input" placeholder="img">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">템플릿 레이어명</label>
+                                <input type="text" id="templateLayerName" class="form-input" placeholder="auto_layer">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 패턴 설정 -->
+                    <div class="section-card">
+                        <div class="section-header">🔍 패턴 설정</div>
+                        <div class="section-content">
+                            <div class="form-group">
+                                <label class="form-label">상품 그룹 접두사</label>
+                                <input type="text" id="productGroupPrefix" class="form-input" placeholder="Product-">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">미니 이미지명</label>
+                                <input type="text" id="miniImgName" class="form-input" placeholder="mini-img">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">클립 그룹명</label>
+                                <input type="text" id="clipGroupName" class="form-input" placeholder="<Clip Group-img>">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <!-- 상품 태그 -->
+                    <div class="section-card">
+                        <div class="section-header">🏷️ 상품 태그</div>
+                        <div class="section-content">
+                            <div class="array-container" id="productTagsContainer">
+                            </div>
+                            <button class="btn btn-add" onclick="addArrayItem('productTags')">+ 태그 추가</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 인증 마크 -->
+                    <div class="section-card">
+                        <div class="section-header">🏆 인증 마크</div>
+                        <div class="section-content">
+                            <div class="array-container" id="certificationMarksContainer">
+                            </div>
+                            <button class="btn btn-add" onclick="addArrayItem('certificationMarks')">+ 인증마크 추가</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <!-- 기본 필드 -->
+                    <div class="section-card">
+                        <div class="section-header">📝 기본 필드</div>
+                        <div class="section-content">
+                            <div class="array-container" id="basicFieldsContainer">
+                            </div>
+                            <button class="btn btn-add" onclick="addArrayItem('basicFields')">+ 필드 추가</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 이미지 확장자 -->
+                    <div class="section-card">
+                        <div class="section-header">🖼️ 이미지 확장자</div>
+                        <div class="section-content">
+                            <div class="array-container" id="imageExtensionsContainer">
+                            </div>
+                            <button class="btn btn-add" onclick="addArrayItem('imageExtensions')">+ 확장자 추가</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 보관방법 색상 -->
+                <div class="section-card">
+                    <div class="section-header">🎨 보관방법별 색상 (CMYK)</div>
+                    <div class="section-content">
+                        <div class="row">
+                            <div style="text-align: center;">
+                                <h4 style="margin-bottom: 15px;">❄️ 냉동</h4>
+                                <div class="color-inputs">
+                                    <div class="color-input-group">
+                                        <div class="color-label">C</div>
+                                        <input type="number" id="frozenC" class="form-input" placeholder="C" min="0" max="100">
+                                    </div>
+                                    <div class="color-input-group">
+                                        <div class="color-label">M</div>
+                                        <input type="number" id="frozenM" class="form-input" placeholder="M" min="0" max="100">
+                                    </div>
+                                    <div class="color-input-group">
+                                        <div class="color-label">Y</div>
+                                        <input type="number" id="frozenY" class="form-input" placeholder="Y" min="0" max="100">
+                                    </div>
+                                    <div class="color-input-group">
+                                        <div class="color-label">K</div>
+                                        <input type="number" id="frozenK" class="form-input" placeholder="K" min="0" max="100">
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="text-align: center;">
+                                <h4 style="margin-bottom: 15px;">🧊 냉장</h4>
+                                <div class="color-inputs">
+                                    <div class="color-input-group">
+                                        <div class="color-label">C</div>
+                                        <input type="number" id="coldC" class="form-input" placeholder="C" min="0" max="100">
+                                    </div>
+                                    <div class="color-input-group">
+                                        <div class="color-label">M</div>
+                                        <input type="number" id="coldM" class="form-input" placeholder="M" min="0" max="100">
+                                    </div>
+                                    <div class="color-input-group">
+                                        <div class="color-label">Y</div>
+                                        <input type="number" id="coldY" class="form-input" placeholder="Y" min="0" max="100">
+                                    </div>
+                                    <div class="color-input-group">
+                                        <div class="color-label">K</div>
+                                        <input type="number" id="coldK" class="form-input" placeholder="K" min="0" max="100">
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="text-align: center;">
+                                <h4 style="margin-bottom: 15px;">🌡️ 상온</h4>
+                                <div class="color-inputs">
+                                    <div class="color-input-group">
+                                        <div class="color-label">C</div>
+                                        <input type="number" id="roomC" class="form-input" placeholder="C" min="0" max="100">
+                                    </div>
+                                    <div class="color-input-group">
+                                        <div class="color-label">M</div>
+                                        <input type="number" id="roomM" class="form-input" placeholder="M" min="0" max="100">
+                                    </div>
+                                    <div class="color-input-group">
+                                        <div class="color-label">Y</div>
+                                        <input type="number" id="roomY" class="form-input" placeholder="Y" min="0" max="100">
+                                    </div>
+                                    <div class="color-input-group">
+                                        <div class="color-label">K</div>
+                                        <input type="number" id="roomK" class="form-input" placeholder="K" min="0" max="100">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 기타 설정 -->
+                <div class="section-card">
+                    <div class="section-header">⚙️ 기타 설정</div>
+                    <div class="section-content">
+                        <div class="row">
+                            <div class="form-group">
+                                <label class="form-label">인증마크 간격</label>
+                                <input type="number" id="certificationSpacing" class="form-input" placeholder="5" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">상품태그 간격</label>
+                                <input type="number" id="additionalSpacing" class="form-input" placeholder="5" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">디버그 모드</label>
+                                <select id="debugMode" class="form-input">
+                                    <option value="">선택하세요</option>
+                                    <option value="true">활성화</option>
+                                    <option value="false">비활성화</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="actions">
+            <button class="btn btn-success" onclick="generateConfig()" style="display:none;" id="generateBtn">
+                💾 수정된 jsx 파일 다운로드
+            </button>
+            
+            <div id="statusMessage" class="status-message"></div>
+        </div>
+    </div>
+
+    <!-- 드래그 가능한 플로팅 초기화 버튼 -->
+    <button id="floatingResetBtn" class="floating-reset-btn" onclick="resetToDefaults()">
+        🔄
+    </button>
+
+    <script>
+        let originalFileContent = '';
+        let fileName = '';
+        let isFileLoaded = false;
+        
+        // 드래그 관련 변수들
+        let isDragging = false;
+        let startX, startY, startLeft, startTop;
+        
+        // 기본 CONFIG 값들 (초기화용)
+        const defaultConfig = {
+            folders: {
+                baseFolderName: '작업파일',
+                imgFolderName: 'img',
+                templateLayerName: 'auto_layer'
+            },
+            patterns: {
+                productGroupPrefix: 'Product-',
+                miniImgName: 'mini-img',
+                clipGroupName: '<Clip Group-img>'
+            },
+            productTags: ['자연해동', 'D-7발주', '개별포장'],
+            certificationMarks: ['HACCP', '유기가공식품', '전통식품', '품질인증', '무항생제', '무농약가공식품', '동물복지'],
+            basicFields: ['페이지', '순서', '타이틀', '상품명', '용량', '원재료', '보관방법', '설명란', '서브단가명', '서브단가', '메인단가명', '메인단가', '개당단가', '알러지'],
+            imageExtensions: ['.jpg', '.jpeg', '.png', '.PNG', '.JPG', '.JPEG'],
+            storageColors: {
+                frozen: { c: 100, m: 40, y: 0, k: 0 },
+                cold: { c: 100, m: 0, y: 100, k: 0 },
+                room: { c: 0, m: 0, y: 20, k: 80 }
+            },
+            spacing: {
+                certification: 5,
+                additional: 5
+            },
+            debugMode: true
+        };
+        
+        // DOM 로드 완료 후 이벤트 리스너 추가
+        document.addEventListener('DOMContentLoaded', function() {
+            // 초기화: 모든 필드를 빈 상태로 시작
+            clearAllFields();
+            
+            // 드래그 가능한 버튼 이벤트 리스너 설정
+            setupDraggableButton();
+            
+            // 파일 선택 처리
+            const fileInput = document.getElementById('fileInput');
+            
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file && file.name.endsWith('.jsx')) {
+                    fileName = file.name;
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        originalFileContent = e.target.result;
+                        parseAndLoadConfigFromFile(originalFileContent);
+                        document.getElementById('configSection').style.display = 'block';
+                        document.getElementById('generateBtn').style.display = 'inline-block';
+                        
+                        // 플로팅 초기화 버튼 표시
+                        document.getElementById('floatingResetBtn').style.display = 'flex';
+                        
+                        // 파일 정보 표시
+                        const fileInfo = document.getElementById('fileInfo');
+                        fileInfo.style.display = 'block';
+                        fileInfo.innerHTML = `📄 로드된 파일: <strong>${fileName}</strong> (${Math.round(file.size/1024)}KB)`;
+                        
+                        isFileLoaded = true;
+                        showStatus('파일에서 실제 설정값을 성공적으로 불러왔습니다!', 'success');
+                    };
+                    reader.readAsText(file, 'UTF-8');
+                } else {
+                    showStatus('jsx 파일만 선택 가능합니다.', 'error');
+                }
+            });
+            
+            // 파일 입력 값 초기화 (같은 파일 재선택 가능하도록)
+            fileInput.addEventListener('click', function() {
+                this.value = '';
+            });
+        });
+        
+        // 드래그 가능한 버튼 설정
+        function setupDraggableButton() {
+            const floatingBtn = document.getElementById('floatingResetBtn');
+            
+            floatingBtn.addEventListener('mousedown', function(e) {
+                if (e.button !== 0) return; // 왼쪽 클릭만
+                
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                startLeft = parseInt(window.getComputedStyle(floatingBtn).right);
+                startTop = parseInt(window.getComputedStyle(floatingBtn).bottom);
+                
+                floatingBtn.classList.add('dragging');
+                
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+                
+                e.preventDefault();
+            });
+        }
+        
+        function handleMouseMove(e) {
+            if (!isDragging) return;
+            
+            const floatingBtn = document.getElementById('floatingResetBtn');
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            
+            const newRight = startLeft - deltaX;
+            const newBottom = startTop - deltaY;
+            
+            // 화면 경계 체크
+            const minRight = 10;
+            const minBottom = 10;
+            const maxRight = window.innerWidth - floatingBtn.offsetWidth - 10;
+            const maxBottom = window.innerHeight - floatingBtn.offsetHeight - 10;
+            
+            floatingBtn.style.right = Math.max(minRight, Math.min(maxRight, newRight)) + 'px';
+            floatingBtn.style.bottom = Math.max(minBottom, Math.min(maxBottom, newBottom)) + 'px';
+        }
+        
+        function handleMouseUp() {
+            if (!isDragging) return;
+            
+            isDragging = false;
+            document.getElementById('floatingResetBtn').classList.remove('dragging');
+            
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        }
+        
+        // 모든 필드를 빈 상태로 초기화
+        function clearAllFields() {
+            // 기본 입력 필드들
+            document.getElementById('baseFolderName').value = '';
+            document.getElementById('imgFolderName').value = '';
+            document.getElementById('templateLayerName').value = '';
+            document.getElementById('productGroupPrefix').value = '';
+            document.getElementById('miniImgName').value = '';
+            document.getElementById('clipGroupName').value = '';
+            
+            // 배열 컨테이너들
+            document.getElementById('productTagsContainer').innerHTML = '';
+            document.getElementById('certificationMarksContainer').innerHTML = '';
+            document.getElementById('basicFieldsContainer').innerHTML = '';
+            document.getElementById('imageExtensionsContainer').innerHTML = '';
+            
+            // 색상 필드들
+            document.getElementById('frozenC').value = '';
+            document.getElementById('frozenM').value = '';
+            document.getElementById('frozenY').value = '';
+            document.getElementById('frozenK').value = '';
+            document.getElementById('coldC').value = '';
+            document.getElementById('coldM').value = '';
+            document.getElementById('coldY').value = '';
+            document.getElementById('coldK').value = '';
+            document.getElementById('roomC').value = '';
+            document.getElementById('roomM').value = '';
+            document.getElementById('roomY').value = '';
+            document.getElementById('roomK').value = '';
+            
+            // 기타 필드들
+            document.getElementById('certificationSpacing').value = '';
+            document.getElementById('additionalSpacing').value = '';
+            document.getElementById('debugMode').value = '';
+        }
+        
+        // 기본값으로 초기화 (버튼 클릭시)
+        function resetToDefaults() {
+            loadDefaultValues();
+            showStatus('기본값으로 초기화되었습니다.', 'info');
+        }
+        
+        // 파일에서 CONFIG 파싱 및 로드
+        function parseAndLoadConfigFromFile(content) {
+            try {
+                // CONFIG 객체 추출
+                const configMatch = content.match(/var CONFIG = \{([\s\S]*?)\};/);
+                if (!configMatch) {
+                    throw new Error('CONFIG 객체를 찾을 수 없습니다.');
+                }
+                
+                const configContent = configMatch[0];
+                
+                // VER 값 추출 및 표시
+                const version = extractStringValue(configContent, 'VER') || 'v0.0';
+                document.getElementById('versionDisplay').textContent = '📦 Version: ' + version;
+                document.getElementById('versionDisplay').style.display = 'block';
+                
+                // 각 설정값들을 정규식으로 추출
+                const parsedConfig = {
+                    folders: {
+                        baseFolderName: extractStringValue(configContent, 'BASE_FOLDER_NAME') || '',
+                        imgFolderName: extractStringValue(configContent, 'IMG_FOLDER_NAME') || '',
+                        templateLayerName: extractStringValue(configContent, 'TEMPLATE_LAYER_NAME') || ''
+                    },
+                    patterns: {
+                        productGroupPrefix: extractStringValue(configContent, 'PRODUCT_GROUP_PREFIX') || '',
+                        miniImgName: extractStringValue(configContent, 'MINI_IMG_NAME') || '',
+                        clipGroupName: extractStringValue(configContent, 'CLIP_GROUP_NAME') || ''
+                    },
+                    productTags: extractArrayValue(configContent, 'PRODUCT_TAGS'),
+                    certificationMarks: extractArrayValue(configContent, 'CERTIFICATION_MARKS'),
+                    basicFields: extractArrayValue(configContent, 'BASIC_FIELDS'),
+                    imageExtensions: extractArrayValue(configContent, 'IMAGE_EXTENSIONS'),
+                    storageColors: extractStorageColors(configContent),
+                    spacing: {
+                        certification: extractNumericValue(configContent, 'CERTIFICATION', 'LAYOUT_SPACING') || '',
+                        additional: extractNumericValue(configContent, 'ADDITIONAL_TEXT', 'LAYOUT_SPACING') || ''
+                    },
+                    debugMode: extractBooleanValue(configContent, 'DEBUG_MODE')
+                };
+                
+                // 파싱된 값들을 UI에 반영
+                loadParsedConfig(parsedConfig);
+                
+            } catch (error) {
+                console.error('CONFIG 파싱 오류:', error);
+                showStatus('파일 파싱 중 오류가 발생했습니다. 기본값을 사용합니다.', 'error');
+                loadDefaultValues();
+            }
+        }
+        
+        // 문자열 값 추출
+        function extractStringValue(content, key) {
+            const regex = new RegExp(key + ':\\s*["\']([^"\']*)["\']');
+            const match = content.match(regex);
+            return match ? match[1] : null;
+        }
+        
+        // 배열 값 추출
+        function extractArrayValue(content, key) {
+            const regex = new RegExp(key + ':\\s*\\[([\\s\\S]*?)\\]');
+            const match = content.match(regex);
+            if (match) {
+                const arrayContent = match[1];
+                const items = arrayContent.match(/["']([^"']*?)["']/g);
+                return items ? items.map(item => item.replace(/["']/g, '')) : [];
+            }
+            return [];
+        }
+        
+        // 숫자 값 추출
+        function extractNumericValue(content, section, parent) {
+            const regex = new RegExp(parent + ':\\s*\\{[\\s\\S]*?' + section + ':\\s*(\\d+)');
+            const match = content.match(regex);
+            return match ? parseInt(match[1]) : null;
+        }
+        
+        // 불린 값 추출
+        function extractBooleanValue(content, key) {
+            const regex = new RegExp(key + ':\\s*(true|false)');
+            const match = content.match(regex);
+            return match ? match[1] : '';
+        }
+        
+        // 저장색상 추출
+        function extractStorageColors(content) {
+            const colors = {
+                frozen: { c: '', m: '', y: '', k: '' },
+                cold: { c: '', m: '', y: '', k: '' },
+                room: { c: '', m: '', y: '', k: '' }
+            };
+            
+            const storageTypes = [
+                { key: '냉동', prop: 'frozen' },
+                { key: '냉장', prop: 'cold' },
+                { key: '상온', prop: 'room' }
+            ];
+            
+            storageTypes.forEach(type => {
+                const regex = new RegExp('"' + type.key + '":\\s*\\{([^}]+)\\}');
+                const match = content.match(regex);
+                if (match) {
+                    const colorContent = match[1];
+                    const cMatch = colorContent.match(/c:\s*(\d+)/);
+                    const mMatch = colorContent.match(/m:\s*(\d+)/);
+                    const yMatch = colorContent.match(/y:\s*(\d+)/);
+                    const kMatch = colorContent.match(/k:\s*(\d+)/);
+                    
+                    if (cMatch) colors[type.prop].c = parseInt(cMatch[1]);
+                    if (mMatch) colors[type.prop].m = parseInt(mMatch[1]);
+                    if (yMatch) colors[type.prop].y = parseInt(yMatch[1]);
+                    if (kMatch) colors[type.prop].k = parseInt(kMatch[1]);
+                }
+            });
+            
+            return colors;
+        }
+        
+        // 파싱된 CONFIG를 UI에 로드
+        function loadParsedConfig(config) {
+            // 폴더 설정
+            document.getElementById('baseFolderName').value = config.folders.baseFolderName;
+            document.getElementById('imgFolderName').value = config.folders.imgFolderName;
+            document.getElementById('templateLayerName').value = config.folders.templateLayerName;
+            
+            // 패턴 설정
+            document.getElementById('productGroupPrefix').value = config.patterns.productGroupPrefix;
+            document.getElementById('miniImgName').value = config.patterns.miniImgName;
+            document.getElementById('clipGroupName').value = config.patterns.clipGroupName;
+            
+            // 배열들 로드
+            loadArrayItems('productTags', config.productTags);
+            loadArrayItems('certificationMarks', config.certificationMarks);
+            loadArrayItems('basicFields', config.basicFields);
+            loadArrayItems('imageExtensions', config.imageExtensions);
+            
+            // 색상 설정
+            document.getElementById('frozenC').value = config.storageColors.frozen.c;
+            document.getElementById('frozenM').value = config.storageColors.frozen.m;
+            document.getElementById('frozenY').value = config.storageColors.frozen.y;
+            document.getElementById('frozenK').value = config.storageColors.frozen.k;
+            
+            document.getElementById('coldC').value = config.storageColors.cold.c;
+            document.getElementById('coldM').value = config.storageColors.cold.m;
+            document.getElementById('coldY').value = config.storageColors.cold.y;
+            document.getElementById('coldK').value = config.storageColors.cold.k;
+            
+            document.getElementById('roomC').value = config.storageColors.room.c;
+            document.getElementById('roomM').value = config.storageColors.room.m;
+            document.getElementById('roomY').value = config.storageColors.room.y;
+            document.getElementById('roomK').value = config.storageColors.room.k;
+            
+            // 기타 설정
+            document.getElementById('certificationSpacing').value = config.spacing.certification;
+            document.getElementById('additionalSpacing').value = config.spacing.additional;
+            document.getElementById('debugMode').value = config.debugMode;
+        }
+        
+        // 기본값 로드
+        function loadDefaultValues() {
+            loadParsedConfig(defaultConfig);
+        }
+        
+        // 배열 항목들 로드
+        function loadArrayItems(arrayName, items) {
+            const container = document.getElementById(arrayName + 'Container');
+            container.innerHTML = '';
+            
+            items.forEach(item => {
+                addArrayItem(arrayName, item);
+            });
+        }
+        
+        // 배열 항목 추가
+        function addArrayItem(arrayName, value = '') {
+            const container = document.getElementById(arrayName + 'Container');
+            const div = document.createElement('div');
+            div.className = 'array-item';
+            
+            div.innerHTML = `
+                <input type="text" class="form-input" value="${value}" placeholder="항목 입력">
+                <button class="btn btn-danger" onclick="removeArrayItem(this)">삭제</button>
+            `;
+            
+            container.appendChild(div);
+        }
+        
+        // 배열 항목 삭제
+        function removeArrayItem(button) {
+            button.parentElement.remove();
+        }
+        
+        // 배열 값들 수집
+        function collectArrayValues(arrayName) {
+            const container = document.getElementById(arrayName + 'Container');
+            const inputs = container.querySelectorAll('input');
+            const values = [];
+            
+            inputs.forEach(input => {
+                if (input.value.trim()) {
+                    values.push(input.value.trim());
+                }
+            });
+            
+            return values;
+        }
+        
+        // 수정된 jsx 파일 생성 및 다운로드
+        function generateConfig() {
+            try {
+                if (!isFileLoaded) {
+                    showStatus('먼저 jsx 파일을 선택해주세요.', 'error');
+                    return;
+                }
+                
+                // 현재 설정값들 수집
+                const newConfig = {
+                    folders: {
+                        baseFolderName: document.getElementById('baseFolderName').value || '작업파일',
+                        imgFolderName: document.getElementById('imgFolderName').value || 'img',
+                        templateLayerName: document.getElementById('templateLayerName').value || 'auto_layer'
+                    },
+                    patterns: {
+                        productGroupPrefix: document.getElementById('productGroupPrefix').value || 'Product-',
+                        miniImgName: document.getElementById('miniImgName').value || 'mini-img',
+                        clipGroupName: document.getElementById('clipGroupName').value || '<Clip Group-img>'
+                    },
+                    productTags: collectArrayValues('productTags'),
+                    certificationMarks: collectArrayValues('certificationMarks'),
+                    basicFields: collectArrayValues('basicFields'),
+                    imageExtensions: collectArrayValues('imageExtensions'),
+                    storageColors: {
+                        frozen: {
+                            c: parseInt(document.getElementById('frozenC').value) || 100,
+                            m: parseInt(document.getElementById('frozenM').value) || 40,
+                            y: parseInt(document.getElementById('frozenY').value) || 0,
+                            k: parseInt(document.getElementById('frozenK').value) || 0
+                        },
+                        cold: {
+                            c: parseInt(document.getElementById('coldC').value) || 100,
+                            m: parseInt(document.getElementById('coldM').value) || 0,
+                            y: parseInt(document.getElementById('coldY').value) || 100,
+                            k: parseInt(document.getElementById('coldK').value) || 0
+                        },
+                        room: {
+                            c: parseInt(document.getElementById('roomC').value) || 0,
+                            m: parseInt(document.getElementById('roomM').value) || 0,
+                            y: parseInt(document.getElementById('roomY').value) || 20,
+                            k: parseInt(document.getElementById('roomK').value) || 80
+                        }
+                    },
+                    spacing: {
+                        certification: parseInt(document.getElementById('certificationSpacing').value) || 5,
+                        additional: parseInt(document.getElementById('additionalSpacing').value) || 5
+                    },
+                    debugMode: document.getElementById('debugMode').value === 'true'
+                };
+                
+                // CONFIG 문자열 생성
+                const configString = generateConfigString(newConfig);
+                
+                // 원본 파일에서 CONFIG 부분 교체
+                const newContent = originalFileContent.replace(
+                    /var CONFIG = \{[\s\S]*?\};/,
+                    `var CONFIG = ${configString};`
+                );
+                
+                // 파일 다운로드
+                const newFileName = fileName.replace('.jsx', '_modified.jsx');
+                downloadFile(newContent, newFileName);
+                showStatus(`수정된 jsx 파일이 다운로드되었습니다! (${newFileName})`, 'success');
+                
+            } catch (error) {
+                console.error('Config generation error:', error);
+                showStatus('오류가 발생했습니다: ' + error.message, 'error');
+            }
+        }
+        
+        // CONFIG 문자열 생성
+        function generateConfigString(config) {
+            const arrayToString = (arr) => {
+                return '["' + arr.join('", "') + '"]';
+            };
+            
+            return `{
+    VER: "v2.0",
+    FOLDERS: {
+        BASE_FOLDER_NAME: "${config.folders.baseFolderName}",
+        IMG_FOLDER_NAME: "${config.folders.imgFolderName}",
+        TEMPLATE_LAYER_NAME: "${config.folders.templateLayerName}"
+    },
+    PATTERNS: {
+        PRODUCT_GROUP_PREFIX: "${config.patterns.productGroupPrefix}",
+        MINI_IMG_NAME: "${config.patterns.miniImgName}",
+        CLIP_GROUP_NAME: "${config.patterns.clipGroupName}"
+    },
+    PRODUCT_TAGS: ${arrayToString(config.productTags)},
+    CERTIFICATION_MARKS: ${arrayToString(config.certificationMarks)},
+    SPECIAL_ITEMS: ["NEW"],
+    BASIC_FIELDS: ${arrayToString(config.basicFields)},
+    STORAGE_COLORS: {
+        "냉동": {c: ${config.storageColors.frozen.c}, m: ${config.storageColors.frozen.m}, y: ${config.storageColors.frozen.y}, k: ${config.storageColors.frozen.k}},
+        "냉장": {c: ${config.storageColors.cold.c}, m: ${config.storageColors.cold.m}, y: ${config.storageColors.cold.y}, k: ${config.storageColors.cold.k}},
+        "상온": {c: ${config.storageColors.room.c}, m: ${config.storageColors.room.m}, y: ${config.storageColors.room.y}, k: ${config.storageColors.room.k}}
+    },
+    LAYOUT_OPTIONS: {
+        CERTIFICATION: {
+            LEFT_TO_RIGHT: "cert_ltr",
+            RIGHT_TO_LEFT: "cert_rtl",
+            TOP_TO_BOTTOM: "cert_ttb"
+        },
+        ADDITIONAL_TEXT: {
+            LEFT_TO_RIGHT: "add_ltr",
+            TOP_TO_BOTTOM: "add_ttb"
+        }
+    },
+    PAGE_LAYOUTS: {
+        "default": {
+            certification: "cert_ltr",
+            additionalText: "add_ttb"
+        }
+    },
+    LAYOUT_SPACING: {
+        CERTIFICATION: ${config.spacing.certification},
+        ADDITIONAL_TEXT: ${config.spacing.additional}
+    },
+    IMAGE_EXTENSIONS: ${arrayToString(config.imageExtensions)},
+    DEBUG_MODE: ${config.debugMode}
+}`;
+        }
+        
+        // 파일 다운로드
+        function downloadFile(content, filename) {
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.href = url;
+            link.download = filename;
+            link.style.display = 'none';
+            
+            document.body.appendChild(link);
+            link.click();
+            
+            // 메모리 정리
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+        
+        // 상태 메시지 표시
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = 'status-message status-' + type;
+            statusEl.style.display = 'block';
+            
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 7000);
+        }
+    </script>
+</body>
+</html>
