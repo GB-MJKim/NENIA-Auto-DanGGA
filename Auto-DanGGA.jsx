@@ -5,7 +5,7 @@
 
 // ===== CONFIG 설정 =====
 var CONFIG = {
-    VER: "v2.0",
+    VER: "v2.1",
     FOLDERS: {
         BASE_FOLDER_NAME: "작업파일",
         IMG_FOLDER_NAME: "img",
