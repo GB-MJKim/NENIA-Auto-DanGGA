@@ -148,8 +148,17 @@ var EnhancedUI = {
             var availablePagesText = pagePanel.add("statictext", undefined,
                 "사용 가능: " + (availablePages ? Utils.arrayToString(availablePages, ", ") : "없음"));
 
+            // NEW, 인증마크, 상품태그 적용 여부
+            var dynPanel = dialog.add("panel", undefined, "동적요소(NEW, 인증마크, 상품태그) 적용 옵션");
+            dynPanel.orientation = "row";
+            dynPanel.alignChildren = ["left", "center"];
+            var radioNo = dynPanel.add("radiobutton", undefined, "적용안함");
+            var radioYes = dynPanel.add("radiobutton", undefined, "적용함");
+            radioNo.value = true; // 기본 적용안함
+
             // 배치 방식 선택 섹션
             var layoutPanel = dialog.add("panel", undefined, "🎨 배치 방식 선택");
+            layoutPanel.visible = false;
             layoutPanel.orientation = "column";
             layoutPanel.alignChildren = ["fill", "top"];
             layoutPanel.margins = 12;
@@ -184,6 +193,9 @@ var EnhancedUI = {
             var tagLTR = tagRadioGroup.add("radiobutton", undefined, "좌→우");
             var tagTTB = tagRadioGroup.add("radiobutton", undefined, "상→하");
             tagTTB.value = true;
+
+            radioNo.onClick = function() { layoutPanel.visible = false; };
+            radioYes.onClick = function() { layoutPanel.visible = true; };
 
             // 미리보기 섹션
             var previewPanel = dialog.add("panel", undefined, "🔍 미리보기");
@@ -305,7 +317,8 @@ var EnhancedUI = {
                     layout: {
                         certification: certLayout,
                         additionalText: tagLayout
-                    }
+                    },
+                    options: { useDynamicElements: radioYes.value }
                 };
             }
 
@@ -736,7 +749,10 @@ var ElementFinder = {
 
 // ===== DYNAMIC PROCESSOR 모듈 =====
 var DynamicProcessor = {
-    processDynamicFields: function(productGroup, productData, headers, layoutConfig) {
+    processDynamicFields: function(productGroup, productData, headers, layoutConfig, options) {
+        // 옵션 Off면 아예 아무 처리도 하지 않음! (템플릿 상태 유지)
+        if (!options || !options.useDynamicElements) return;
+
         Utils.log('=== 동적 필드 처리: ' + productGroup.name + ' ===');
         var certificationItems = [];
         var additionalItems = [];
@@ -1084,7 +1100,7 @@ var AutoDanggaAutomation = {
         return pageProducts.slice(0, CONFIG.MAX_PRODUCTS);
     },
 
-    updateProductGroup: function(productNumber, productData, layer, headers, layoutConfig) {
+    updateProductGroup: function(productNumber, productData, layer, headers, layoutConfig, options) {
         Utils.log("=== 상품 그룹 " + productNumber + " 업데이트 시작 ===");
         var productGroup = GroupManager.findProductGroup(productNumber, layer);
         
@@ -1094,7 +1110,7 @@ var AutoDanggaAutomation = {
         }
 
         TextProcessor.updateBasicFields(productGroup, productData);
-        DynamicProcessor.processDynamicFields(productGroup, productData, headers, layoutConfig);
+        DynamicProcessor.processDynamicFields(productGroup, productData, headers, layoutConfig, options);
         
         Utils.log("=== 상품 그룹 " + productNumber + " 업데이트 완료 ===");
         return true;
@@ -1232,7 +1248,7 @@ var AutoDanggaAutomation = {
             var textUpdateCount = 0;
             for (var k = 0; k < productDataArray.length; k++) {
                 var productNumber = k + 1;
-                if (this.updateProductGroup(productNumber, productDataArray[k], templateLayer, csvResult.headers, layoutConfig)) {
+                if (this.updateProductGroup(productNumber, productDataArray[k], templateLayer, csvResult.headers, layoutConfig, userInput.options)) {
                     textUpdateCount++;
                 }
             }
