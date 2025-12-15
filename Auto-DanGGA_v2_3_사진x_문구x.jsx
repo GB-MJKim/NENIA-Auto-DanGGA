@@ -5,7 +5,7 @@
 
 // ===== CONFIG 설정 =====
 var CONFIG = {
-    VER: "v2.1",
+    VER: "v2.2",
     FOLDERS: {
         BASE_FOLDER_NAME: "작업파일",
         IMG_FOLDER_NAME: "img",
@@ -27,9 +27,9 @@ var CONFIG = {
         "설명란", "서브단가명", "서브단가", "메인단가명", "메인단가", "개당단가", "알러지"
     ],
     STORAGE_COLORS: {
-        "냉동": {c: 100, m: 40, y: 0, k: 0},
-        "냉장": {c: 90, m: 0, y: 90, k: 0},
-        "상온": {c: 0, m: 0, y: 0, k: 100}
+        "냉동": { c: 0, m: 0, y: 0, k: 100 },
+        "냉장": { c: 0, m: 0, y: 0, k: 100 },
+        "상온": { c: 0, m: 0, y: 0, k: 100 }
     },
     LAYOUT_OPTIONS: {
         CERTIFICATION: {
@@ -53,26 +53,88 @@ var CONFIG = {
         ADDITIONAL_TEXT: 5
     },
     IMAGE_EXTENSIONS: [".jpg", ".jpeg", ".png", ".PNG", ".JPG", ".JPEG"],
-    DEBUG_MODE: true,
+    DEBUG_MODE: false,
     // ✅ 최대 상품 개수 확장
     MAX_PRODUCTS: 20
 };
 
+// ===== 오류 진단 모듈 =====
+var ErrorChecker = {
+    // 상품 그룹명 중복 검사
+    checkProductGroupNameConflict: function (templateLayer) {
+        var groupNameCount = {};
+        var conflicts = [];
+        for (var i = 0; i < templateLayer.groupItems.length; i++) {
+            var group = templateLayer.groupItems[i];
+            if (typeof group.name === "string" && group.name.indexOf("Product-") === 0) {
+                if (!groupNameCount[group.name]) groupNameCount[group.name] = [];
+                groupNameCount[group.name].push(i + 1);
+            }
+        }
+        for (var name in groupNameCount) {
+            if (groupNameCount[name].length > 1) {
+                conflicts.push(name + " (" + groupNameCount[name].length + "개, 인덱스: " + groupNameCount[name].join(", ") + ")");
+            }
+        }
+        return conflicts; // 배열, 없으면 []
+    },
+
+    // CSV 필드 누락(TextFrame 등 없음)
+    findMissingFields: function (templateLayer, csvHeaders) {
+        var notFoundFields = [];
+        for (var h = 0; h < csvHeaders.length; h++) {
+            var field = csvHeaders[h];
+            var found = false;
+            // 첫 번째 Product-N 그룹에서만 검사해도 충분
+            for (var i = 0; i < templateLayer.groupItems.length; i++) {
+                var group = templateLayer.groupItems[i];
+                if (typeof group.name === "string" && group.name.indexOf("Product-") === 0) {
+                    if (GroupManager.findTextFrameInGroup && GroupManager.findTextFrameInGroup(field, group)) {
+                        found = true; break;
+                    }
+                }
+            }
+            if (!found) notFoundFields.push(field);
+        }
+        return notFoundFields; // 없으면 []
+    },
+
+    // (향후 추가적인 진단은 여기에 계속 추가!)
+
+    // ===== 종합체크 및 Alert =====
+    runAllChecksAndAlert: function (templateLayer, csvHeaders) {
+        var alertMessages = [];
+        var groupConflicts = this.checkProductGroupNameConflict(templateLayer);
+        if (groupConflicts.length > 0)
+            alertMessages.push("상품 그룹명 중복 :\n" + groupConflicts.join("\n"));
+        var missingFields = this.findMissingFields(templateLayer, csvHeaders);
+        if (missingFields.length > 0)
+            alertMessages.push("CSV에는 있는데 템플릿에 없는 필드:\n- " + missingFields.join("\n- "));
+        // ... 추가진단 결과 있으면 이어 붙임
+
+        if (alertMessages.length > 0) {
+            alert("[템플릿/CSV 구조 점검]\n\n" + alertMessages.join("\n\n") + "\n\n⚠️ 오류 수정 후 재실행하세요.");
+            return false;
+        }
+        return true;
+    }
+};
+
 // ===== UTILS 모듈 (ExtendScript 호환) =====
 var Utils = {
-    safeTrim: function(str) {
+    safeTrim: function (str) {
         if (typeof str !== "string") return "";
         return str.replace(/^\s+|\s+$/g, '');
     },
-    
-    arrayContains: function(array, value) {
+
+    arrayContains: function (array, value) {
         for (var i = 0; i < array.length; i++) {
             if (array[i] === value) return true;
         }
         return false;
     },
-    
-    arrayToString: function(array, separator) {
+
+    arrayToString: function (array, separator) {
         if (!separator) separator = ",";
         var result = "";
         for (var i = 0; i < array.length; i++) {
@@ -81,34 +143,34 @@ var Utils = {
         }
         return result;
     },
-    
-    isBasicField: function(fieldName) {
+
+    isBasicField: function (fieldName) {
         return Utils.arrayContains(CONFIG.BASIC_FIELDS, fieldName);
     },
-    
-    log: function(message) {
+
+    log: function (message) {
         if (CONFIG.DEBUG_MODE) {
             $.writeln("[DEBUG] " + message);
         }
     },
-    
-    safeLength: function(value) {
+
+    safeLength: function (value) {
         if (typeof value !== "string") return 0;
         return value.length;
     },
-    
-    isProductTag: function(fieldName) {
+
+    isProductTag: function (fieldName) {
         return Utils.arrayContains(CONFIG.PRODUCT_TAGS, fieldName);
     },
-    
-    isCertificationMark: function(fieldName) {
+
+    isCertificationMark: function (fieldName) {
         return Utils.arrayContains(CONFIG.CERTIFICATION_MARKS, fieldName);
     }
 };
 
 // ===== ENHANCED UI DIALOG 모듈 =====
 var EnhancedUI = {
-    createMainDialog: function(availablePages, pageData, headers) {
+    createMainDialog: function (availablePages, pageData, headers) {
         try {
             var dialog = new Window("dialog", "🚀 오토단가 동적 자동화 - 설정");
             dialog.orientation = "column";
@@ -127,7 +189,7 @@ var EnhancedUI = {
 
             var headerText = infoPanel.add("edittext", undefined,
                 headers ? Utils.arrayToString(headers, ", ") : "헤더 없음",
-                {readonly: true});
+                { readonly: true });
             headerText.preferredSize = [450, 20];
 
             // ✅ 최대 처리 상품 개수 표시
@@ -147,6 +209,41 @@ var EnhancedUI = {
 
             var availablePagesText = pagePanel.add("statictext", undefined,
                 "사용 가능: " + (availablePages ? Utils.arrayToString(availablePages, ", ") : "없음"));
+
+            // 사진/문구/가격 옵션 패널
+            var updatePanel = dialog.add("panel", undefined, "자동 적용 옵션");
+            updatePanel.orientation = "column";
+            updatePanel.alignChildren = ["left", "top"];
+            updatePanel.margins = 12;
+
+            // 사진 옵션 (default 적용함)
+            var imgGroup = updatePanel.add("group");
+            imgGroup.orientation = "row";
+            imgGroup.alignChildren = ["left", "center"];
+            imgGroup.add("statictext", undefined, "사진 적용:");
+            var imgNo = imgGroup.add("radiobutton", undefined, "적용안함");
+            var imgYes = imgGroup.add("radiobutton", undefined, "적용함");
+            imgNo.value = true;
+
+            // 문구 옵션 (default 적용함)
+            var textGroup = updatePanel.add("group");
+            textGroup.orientation = "row";
+            textGroup.alignChildren = ["left", "center"];
+            textGroup.add("statictext", undefined, "문구 수정:");
+            var textNo = textGroup.add("radiobutton", undefined, "적용안함");
+            var textYes = textGroup.add("radiobutton", undefined, "적용함");
+            textNo.value = true;
+
+            // 가격 옵션 (default 적용함)
+            var priceGroup = updatePanel.add("group");
+            priceGroup.orientation = "row";
+            priceGroup.alignChildren = ["left", "center"];
+            priceGroup.add("statictext", undefined, "가격 수정:");
+            var priceNo = priceGroup.add("radiobutton", undefined, "적용안함");
+            var priceYes = priceGroup.add("radiobutton", undefined, "적용함");
+            priceYes.value = true;
+
+
 
             // NEW, 인증마크, 상품태그 적용 여부
             var dynPanel = dialog.add("panel", undefined, "동적요소(NEW, 인증마크, 상품태그) 적용 옵션");
@@ -194,8 +291,8 @@ var EnhancedUI = {
             var tagTTB = tagRadioGroup.add("radiobutton", undefined, "상→하");
             tagTTB.value = true;
 
-            radioNo.onClick = function() { layoutPanel.visible = false; };
-            radioYes.onClick = function() { layoutPanel.visible = true; };
+            radioNo.onClick = function () { layoutPanel.visible = false; };
+            radioYes.onClick = function () { layoutPanel.visible = true; };
 
             // 미리보기 섹션
             var previewPanel = dialog.add("panel", undefined, "🔍 미리보기");
@@ -204,11 +301,11 @@ var EnhancedUI = {
             previewPanel.margins = 12;
 
             var previewText = previewPanel.add("edittext", undefined, "",
-                {readonly: true, multiline: true});
+                { readonly: true, multiline: true });
             previewText.preferredSize = [450, 150];
 
             // 미리보기 업데이트 함수
-            var updatePreview = function() {
+            var updatePreview = function () {
                 try {
                     var inputPage = parseInt(pageInput.text);
                     if (isNaN(inputPage)) {
@@ -251,13 +348,13 @@ var EnhancedUI = {
             buttonGroup.alignment = "center";
             buttonGroup.spacing = 15;
 
-            var okButton = buttonGroup.add("button", undefined, "✅ 실행", {name: "ok"});
-            var cancelButton = buttonGroup.add("button", undefined, "❌ 취소", {name: "cancel"});
+            var okButton = buttonGroup.add("button", undefined, "✅ 실행", { name: "ok" });
+            var cancelButton = buttonGroup.add("button", undefined, "❌ 취소", { name: "cancel" });
 
             okButton.preferredSize = [80, 30];
             cancelButton.preferredSize = [80, 30];
 
-            okButton.onClick = function() {
+            okButton.onClick = function () {
                 try {
                     var inputPage = parseInt(pageInput.text);
                     if (isNaN(inputPage)) {
@@ -288,7 +385,7 @@ var EnhancedUI = {
                 }
             };
 
-            cancelButton.onClick = function() {
+            cancelButton.onClick = function () {
                 dialog.close(0);
             };
 
@@ -318,7 +415,12 @@ var EnhancedUI = {
                         certification: certLayout,
                         additionalText: tagLayout
                     },
-                    options: { useDynamicElements: radioYes.value }
+                    options: {
+                        useDynamicElements: radioYes.value,
+                        useImageUpdate: imgYes.value,
+                        useTextUpdate: textYes.value,
+                        usePriceUpdate: priceYes.value
+                    }
                 };
             }
 
@@ -335,7 +437,7 @@ var EnhancedUI = {
 // ===== CSV PARSER 모듈 (수정: 헤더를 첫 번째 줄로) =====
 // ===== CSV PARSER 모듈 (강화된 오류 처리) =====
 var CSVParser = {
-    parseCSVFile: function(csvFile) {
+    parseCSVFile: function (csvFile) {
         try {
             // 파일 존재 확인
             if (!csvFile || !csvFile.exists) {
@@ -345,13 +447,13 @@ var CSVParser = {
             csvFile.open("r");
             var content = csvFile.read();
             csvFile.close();
-            
+
             if (!content || content.length === 0) {
                 throw new Error("CSV 파일이 비어있습니다.");
             }
 
             var lines = this.safeSplitLines(content);
-            
+
             // ✅ 파일 구조 검증 강화
             if (lines.length < 2) {
                 throw new Error("❌ CSV 파일 구조 오류!\n\n" +
@@ -363,7 +465,7 @@ var CSVParser = {
 
             // ✅ 헤더 파싱 및 검증 (첫 번째 줄)
             var headers = this.parseCSVLine(lines[0]);
-            
+
             if (!headers || headers.length === 0) {
                 throw new Error("❌ 헤더 파싱 실패!\n\n" +
                     "첫 번째 줄에서 헤더를 찾을 수 없습니다.\n" +
@@ -374,7 +476,7 @@ var CSVParser = {
             // ✅ 필수 헤더 확인
             var requiredHeaders = ["페이지", "순서", "상품명"];
             var missingHeaders = [];
-            
+
             for (var r = 0; r < requiredHeaders.length; r++) {
                 var found = false;
                 for (var h = 0; h < headers.length; h++) {
@@ -387,7 +489,7 @@ var CSVParser = {
                     missingHeaders.push(requiredHeaders[r]);
                 }
             }
-            
+
             if (missingHeaders.length > 0) {
                 throw new Error("❌ 필수 헤더 누락!\n\n" +
                     "누락된 헤더: " + missingHeaders.join(", ") + "\n\n" +
@@ -396,17 +498,17 @@ var CSVParser = {
             }
 
             Utils.log("✅ 헤더 파싱 성공: " + Utils.arrayToString(headers, ", "));
-            
+
             var allProductData = [];
             var errorRows = [];
-            
+
             // ✅ 데이터 파싱 (두 번째 줄부터) - 오류 행 추적
             for (var i = 1; i < lines.length; i++) {
                 var line = lines[i];
                 if (typeof line === "string" && Utils.safeLength(Utils.safeTrim(line)) > 0) {
                     try {
                         var cells = this.parseCSVLine(line);
-                        
+
                         if (cells.length < headers.length) {
                             errorRows.push({
                                 row: i + 1,
@@ -416,7 +518,7 @@ var CSVParser = {
                             });
                             continue;
                         }
-                        
+
                         var productData = this.convertToProductData(cells, headers);
                         if (productData) {
                             allProductData.push(productData);
@@ -434,7 +536,7 @@ var CSVParser = {
             // ✅ 데이터 검증
             if (allProductData.length === 0) {
                 var errorMsg = "❌ 처리 가능한 데이터가 없습니다!\n\n";
-                
+
                 if (errorRows.length > 0) {
                     errorMsg += "오류가 발생한 행들:\n";
                     for (var e = 0; e < Math.min(errorRows.length, 3); e++) {
@@ -451,10 +553,10 @@ var CSVParser = {
                         errorMsg += "• ... 외 " + (errorRows.length - 3) + "개 행\n";
                     }
                 }
-                
+
                 errorMsg += "\n헤더 개수: " + headers.length + "\n";
                 errorMsg += "헤더: " + Utils.arrayToString(headers, ", ");
-                
+
                 throw new Error(errorMsg);
             }
 
@@ -466,7 +568,7 @@ var CSVParser = {
         } catch (e) {
             // ✅ 사용자 친화적 오류 메시지
             var userMessage = "";
-            
+
             if (e.message.indexOf("❌") === 0) {
                 // 이미 포맷된 오류 메시지
                 userMessage = e.message;
@@ -479,7 +581,7 @@ var CSVParser = {
                     "2. 헤더에 '페이지', '순서', '상품명' 포함 확인\n" +
                     "3. 모든 데이터 행의 열 개수가 헤더와 일치하는지 확인";
             }
-            
+
             alert(userMessage);
             Utils.log("CSV 파싱 상세 오류: " + e.toString());
             throw e;
@@ -487,11 +589,11 @@ var CSVParser = {
     },
 
     // 나머지 함수들은 동일...
-    safeSplitLines: function(content) {
+    safeSplitLines: function (content) {
         var result = [];
         var current = "";
         var inQuotes = false;
-        
+
         for (var i = 0; i < content.length; i++) {
             var currentChar = content.charAt(i);
             if (currentChar === '"') {
@@ -509,20 +611,20 @@ var CSVParser = {
                 current += currentChar;
             }
         }
-        
+
         if (Utils.safeLength(Utils.safeTrim(current)) > 0) {
             result.push(current);
         }
-        
+
         return result;
     },
 
-    parseCSVLine: function(line) {
+    parseCSVLine: function (line) {
         var result = [];
         var current = "";
         var inQuotes = false;
         var i = 0;
-        
+
         while (i < line.length) {
             var currentChar = line.charAt(i);
             if (currentChar === '"') {
@@ -541,12 +643,12 @@ var CSVParser = {
             }
             i++;
         }
-        
+
         result.push(this.cleanCell(current));
         return result;
     },
 
-    cleanCell: function(value) {
+    cleanCell: function (value) {
         if (typeof value !== "string") return "";
         value = Utils.safeTrim(value);
         if (value.charAt(0) === '"' && value.charAt(value.length - 1) === '"') {
@@ -556,13 +658,13 @@ var CSVParser = {
         return value;
     },
 
-    convertToProductData: function(cells, headers) {
+    convertToProductData: function (cells, headers) {
         try {
             var data = {};
             for (var i = 0; i < headers.length && i < cells.length; i++) {
                 var header = Utils.safeTrim(headers[i]);
                 var value = Utils.safeTrim(cells[i] || '');
-                
+
                 if (!header) continue;
 
                 if (header === "페이지" || header === "순서") {
@@ -576,7 +678,7 @@ var CSVParser = {
                         data[header] = value;
                     }
                 }
-                
+
                 Utils.log("필드 변환: " + header + " = " + data[header]);
             }
             return data;
@@ -590,7 +692,7 @@ var CSVParser = {
 
 // ===== GROUP MANAGER 모듈 (확장) =====
 var GroupManager = {
-    findProductGroup: function(groupNumber, layer) {
+    findProductGroup: function (groupNumber, layer) {
         var targetName = CONFIG.PATTERNS.PRODUCT_GROUP_PREFIX + groupNumber;
         for (var i = 0; i < layer.groupItems.length; i++) {
             var group = layer.groupItems[i];
@@ -598,17 +700,17 @@ var GroupManager = {
                 return group;
             }
         }
-        
+
         for (var j = 0; j < layer.groupItems.length; j++) {
             var parentGroup = layer.groupItems[j];
             var found = this.findProductGroupInNested(groupNumber, parentGroup);
             if (found) return found;
         }
-        
+
         return null;
     },
 
-    findProductGroupInNested: function(groupNumber, container) {
+    findProductGroupInNested: function (groupNumber, container) {
         var targetName = CONFIG.PATTERNS.PRODUCT_GROUP_PREFIX + groupNumber;
         for (var i = 0; i < container.groupItems.length; i++) {
             var group = container.groupItems[i];
@@ -616,33 +718,33 @@ var GroupManager = {
                 return group;
             }
         }
-        
+
         for (var j = 0; j < container.groupItems.length; j++) {
             var found = this.findProductGroupInNested(groupNumber, container.groupItems[j]);
             if (found) return found;
         }
-        
+
         return null;
     },
 
-    findTextFrameInGroup: function(frameName, group) {
+    findTextFrameInGroup: function (frameName, group) {
         for (var i = 0; i < group.textFrames.length; i++) {
             var textFrame = group.textFrames[i];
             if (textFrame.name === frameName) {
                 return textFrame;
             }
         }
-        
+
         for (var j = 0; j < group.groupItems.length; j++) {
             var subGroup = group.groupItems[j];
             var found = this.findTextFrameInGroup(frameName, subGroup);
             if (found) return found;
         }
-        
+
         return null;
     },
 
-    findClipGroupInProductGroup: function(productGroup) {
+    findClipGroupInProductGroup: function (productGroup) {
         Utils.log("클리핑 그룹 검색: " + CONFIG.PATTERNS.CLIP_GROUP_NAME);
         for (var i = 0; i < productGroup.groupItems.length; i++) {
             var subGroup = productGroup.groupItems[i];
@@ -652,17 +754,17 @@ var GroupManager = {
                 return subGroup;
             }
         }
-        
+
         for (var j = 0; j < productGroup.groupItems.length; j++) {
             var parentGroup = productGroup.groupItems[j];
             var found = this.findClipGroupInProductGroup(parentGroup);
             if (found) return found;
         }
-        
+
         return null;
     },
 
-    findPlacedItemInGroup: function(group) {
+    findPlacedItemInGroup: function (group) {
         Utils.log("상품 이미지 검색: " + group.name);
         var clipGroup = this.findClipGroupInProductGroup(group);
         if (clipGroup) {
@@ -675,42 +777,42 @@ var GroupManager = {
         return null;
     },
 
-    findMiniImageInGroup: function(group) {
+    findMiniImageInGroup: function (group) {
         for (var i = 0; i < group.placedItems.length; i++) {
             var placedItem = group.placedItems[i];
             if (placedItem.name === CONFIG.PATTERNS.MINI_IMG_NAME) {
                 return placedItem;
             }
         }
-        
+
         for (var j = 0; j < group.groupItems.length; j++) {
             var subGroup = group.groupItems[j];
             var found = this.findMiniImageInGroup(subGroup);
             if (found) return found;
         }
-        
+
         return null;
     },
 
-    findRectangleInGroup: function(group) {
+    findRectangleInGroup: function (group) {
         var clipGroup = this.findClipGroupInProductGroup(group);
         if (clipGroup) {
             for (var i = 0; i < clipGroup.pathItems.length; i++) {
                 return clipGroup.pathItems[i];
             }
         }
-        
+
         for (var j = 0; j < group.pathItems.length; j++) {
             return group.pathItems[j];
         }
-        
+
         return null;
     }
 };
 
 // ===== ELEMENT FINDER 모듈 =====
 var ElementFinder = {
-    findElementByName: function(name, container) {
+    findElementByName: function (name, container) {
         var patterns = [name, "Group-" + name, "<" + name + ">"];
         Utils.log("요소 검색: " + name);
 
@@ -720,7 +822,7 @@ var ElementFinder = {
             for (var p = 0; p < patterns.length; p++) {
                 if (placedItem.name === patterns[p]) {
                     Utils.log('PlacedItem 발견: ' + placedItem.name);
-                    return {type: 'PlacedItem', item: placedItem};
+                    return { type: 'PlacedItem', item: placedItem };
                 }
             }
         }
@@ -731,7 +833,7 @@ var ElementFinder = {
             for (var q = 0; q < patterns.length; q++) {
                 if (group.name === patterns[q]) {
                     Utils.log('GroupItem 발견: ' + group.name);
-                    return {type: 'GroupItem', item: group};
+                    return { type: 'GroupItem', item: group };
                 }
             }
         }
@@ -749,7 +851,7 @@ var ElementFinder = {
 
 // ===== DYNAMIC PROCESSOR 모듈 =====
 var DynamicProcessor = {
-    processDynamicFields: function(productGroup, productData, headers, layoutConfig, options) {
+    processDynamicFields: function (productGroup, productData, headers, layoutConfig, options) {
         // 옵션 Off면 아예 아무 처리도 하지 않음! (템플릿 상태 유지)
         if (!options || !options.useDynamicElements) return;
 
@@ -777,7 +879,7 @@ var DynamicProcessor = {
                     shouldShow = true;
                 } else if (typeof value === "string" &&
                     (Utils.safeTrim(value).toUpperCase() === 'Y' ||
-                     (Utils.safeTrim(value).length > 0 && Utils.safeTrim(value).toUpperCase() !== 'N'))) {
+                        (Utils.safeTrim(value).length > 0 && Utils.safeTrim(value).toUpperCase() !== 'N'))) {
                     shouldShow = true;
                 }
 
@@ -831,9 +933,9 @@ var DynamicProcessor = {
         Utils.log('=== 동적 필드 처리 완료 ===');
     },
 
-    arrangeItems: function(items, layoutType, category) {
+    arrangeItems: function (items, layoutType, category) {
         if (items.length === 0) return;
-        
+
         var baseItem = items[0].item;
         var startX = baseItem.position[0];
         var startY = baseItem.position[1];
@@ -869,7 +971,7 @@ var DynamicProcessor = {
                 Utils.log(category + ' 우→좌: ' + item.name);
             }
         } else if (layoutType === CONFIG.LAYOUT_OPTIONS.CERTIFICATION.TOP_TO_BOTTOM ||
-                   layoutType === CONFIG.LAYOUT_OPTIONS.ADDITIONAL_TEXT.TOP_TO_BOTTOM) {
+            layoutType === CONFIG.LAYOUT_OPTIONS.ADDITIONAL_TEXT.TOP_TO_BOTTOM) {
             var currentY = startY;
             for (var i = 0; i < items.length; i++) {
                 var item = items[i];
@@ -882,7 +984,7 @@ var DynamicProcessor = {
         }
     },
 
-    getItemWidth: function(item) {
+    getItemWidth: function (item) {
         try {
             var bounds = item.geometricBounds;
             return Math.abs(bounds[2] - bounds[0]);
@@ -891,7 +993,7 @@ var DynamicProcessor = {
         }
     },
 
-    getItemHeight: function(item) {
+    getItemHeight: function (item) {
         try {
             var bounds = item.geometricBounds;
             return Math.abs(bounds[1] - bounds[3]);
@@ -903,12 +1005,12 @@ var DynamicProcessor = {
 
 // ===== TEXT PROCESSOR 모듈 =====
 var TextProcessor = {
-    applyStorageColor: function(textFrame, storageMethod) {
+    applyStorageColor: function (textFrame, storageMethod) {
         try {
             var storage = Utils.safeTrim(storageMethod);
             var colorData = CONFIG.STORAGE_COLORS[storage];
             var cmykColor = new CMYKColor();
-            
+
             if (colorData) {
                 cmykColor.cyan = colorData.c;
                 cmykColor.magenta = colorData.m;
@@ -928,33 +1030,44 @@ var TextProcessor = {
         }
     },
 
-    updateBasicFields: function(productGroup, productData) {
+    updateBasicFields: function (productGroup, productData, options) {
+
         Utils.log('기본 필드 업데이트: ' + productGroup.name);
-        
+        var textFields = ["타이틀", "상품명", "용량", "원재료", "설명란"];
+        var priceFields = ["보관방법", "서브단가", "메인단가", "개당단가", "알러지", "메인단가명", "서브단가명"];
+
         for (var i = 0; i < CONFIG.BASIC_FIELDS.length; i++) {
             var fieldName = CONFIG.BASIC_FIELDS[i];
             var textFrame = GroupManager.findTextFrameInGroup(fieldName, productGroup);
-            
-            if (textFrame) {
-                var value = productData[fieldName] || '';
+            if (!textFrame) continue;
+
+            var value = productData[fieldName] || '';
+
+            // 문구 수정
+            if (options.useTextUpdate && Utils.arrayContains(textFields, fieldName)) {
                 textFrame.contents = value;
-                Utils.log(fieldName + ' 업데이트: ' + value);
-                
+            }
+            // 가격 관련 필드
+            else if (options.usePriceUpdate && Utils.arrayContains(priceFields, fieldName)) {
+                textFrame.contents = value;
                 if (fieldName === '보관방법' && value) {
                     this.applyStorageColor(textFrame, value);
                 }
             }
+            // 그 외 항목은 그대로 유지 (skip)
+
+            Utils.log(fieldName + ' 업데이트: ' + value);
         }
     }
 };
 
 // ===== IMAGE LINKER 모듈 =====
 var ImageLinker = {
-    getSiblingImageFolderPath: function(imgFolderName) {
+    getSiblingImageFolderPath: function (imgFolderName) {
         var docFile = app.activeDocument.fullName;
         var workFolder = docFile.parent;
         var parentFolder = workFolder.parent;
-        
+
         if (!parentFolder) {
             throw new Error('상위 폴더를 찾을 수 없습니다.');
         }
@@ -967,7 +1080,7 @@ var ImageLinker = {
         return imgFolder.fsName;
     },
 
-    findImageFile: function(imgFolderPath, pageNumber, productNumber, isMini) {
+    findImageFile: function (imgFolderPath, pageNumber, productNumber, isMini) {
         for (var i = 0; i < CONFIG.IMAGE_EXTENSIONS.length; i++) {
             var fileName;
             if (isMini) {
@@ -989,7 +1102,7 @@ var ImageLinker = {
         return { success: false };
     },
 
-    resizeImageToFitRectangle: function(placedItem, rectangle) {
+    resizeImageToFitRectangle: function (placedItem, rectangle) {
         try {
             var rectBounds = rectangle.geometricBounds;
             var rectWidth = Math.abs(rectBounds[2] - rectBounds[0]);
@@ -1017,7 +1130,7 @@ var ImageLinker = {
         }
     },
 
-    relinkImage: function(placedItem, imagePath) {
+    relinkImage: function (placedItem, imagePath) {
         try {
             var imageFile = new File(imagePath);
             placedItem.file = imageFile;
@@ -1027,7 +1140,7 @@ var ImageLinker = {
         }
     },
 
-    processGroupImages: function(productGroup, pageNumber, productNumber, imgFolderPath) {
+    processGroupImages: function (productGroup, pageNumber, productNumber, imgFolderPath) {
         var results = { mainSuccess: false, miniSuccess: false, details: [] };
 
         // 메인 이미지 처리
@@ -1075,7 +1188,7 @@ var ImageLinker = {
 
 // ===== MAIN 모듈 (오토단가로 변경 및 20개 확장) =====
 var AutoDanggaAutomation = {
-    getLayerByName: function(layerName, doc) {
+    getLayerByName: function (layerName, doc) {
         for (var i = 0; i < doc.layers.length; i++) {
             if (doc.layers[i].name === layerName) {
                 return doc.layers[i];
@@ -1084,42 +1197,42 @@ var AutoDanggaAutomation = {
         return null;
     },
 
-    getTargetPageData: function(allData, targetPage) {
+    getTargetPageData: function (allData, targetPage) {
         var pageProducts = [];
         for (var p = 0; p < allData.length; p++) {
             if (allData[p].페이지 === targetPage) {
                 pageProducts.push(allData[p]);
             }
         }
-        
-        pageProducts.sort(function(a, b) {
+
+        pageProducts.sort(function (a, b) {
             return a.순서 - b.순서;
         });
-        
+
         // ✅ 수정: 최대 20개까지 처리
         return pageProducts.slice(0, CONFIG.MAX_PRODUCTS);
     },
 
-    updateProductGroup: function(productNumber, productData, layer, headers, layoutConfig, options) {
+    updateProductGroup: function (productNumber, productData, layer, headers, layoutConfig, options) {
         Utils.log("=== 상품 그룹 " + productNumber + " 업데이트 시작 ===");
         var productGroup = GroupManager.findProductGroup(productNumber, layer);
-        
+
         if (!productGroup) {
             Utils.log("상품 그룹을 찾을 수 없음: Product-" + productNumber);
             return false;
         }
 
-        TextProcessor.updateBasicFields(productGroup, productData);
+        TextProcessor.updateBasicFields(productGroup, productData, options);
         DynamicProcessor.processDynamicFields(productGroup, productData, headers, layoutConfig, options);
-        
+
         Utils.log("=== 상품 그룹 " + productNumber + " 업데이트 완료 ===");
         return true;
     },
 
-    getUserInput: function(allData, headers) {
+    getUserInput: function (allData, headers) {
         var pages = [];
         var pageCount = {};
-        
+
         for (var i = 0; i < allData.length; i++) {
             var page = allData[i].페이지;
             if (pageCount[page]) {
@@ -1129,14 +1242,14 @@ var AutoDanggaAutomation = {
                 pages.push(page);
             }
         }
-        
-        pages.sort(function(a, b) { return a - b; });
+
+        pages.sort(function (a, b) { return a - b; });
         return EnhancedUI.createMainDialog(pages, allData, headers);
     },
 
-    generatePreview: function(pageNumber, productDataArray, headers) {
+    generatePreview: function (pageNumber, productDataArray, headers) {
         var preview = "오토단가 동적 자동화 - 페이지 " + pageNumber + ":\n\n";
-        
+
         for (var j = 0; j < productDataArray.length; j++) {
             var product = productDataArray[j];
             var activeFields = [];
@@ -1144,11 +1257,11 @@ var AutoDanggaAutomation = {
             for (var i = 0; i < headers.length; i++) {
                 var fieldName = Utils.safeTrim(headers[i]);
                 if (Utils.isBasicField(fieldName) || !fieldName) continue;
-                
+
                 var value = product[fieldName];
                 if ((typeof value === "boolean" && value) ||
                     (typeof value === "string" && Utils.safeTrim(value).length > 0 &&
-                     Utils.safeTrim(value).toUpperCase() !== 'N')) {
+                        Utils.safeTrim(value).toUpperCase() !== 'N')) {
                     activeFields.push(fieldName + ": " + value);
                 }
             }
@@ -1161,14 +1274,14 @@ var AutoDanggaAutomation = {
 
         preview += "🔍 감지된 헤더: " + Utils.arrayToString(headers, ", ") + "\n";
         preview += "📊 최대 처리 가능: " + CONFIG.MAX_PRODUCTS + "개 상품\n\n";
-        
+
         return preview;
     },
 
-    getLayoutDescription: function(layoutConfig) {
+    getLayoutDescription: function (layoutConfig) {
         var certDesc = "";
         var addDesc = "";
-        
+
         if (layoutConfig.certification === CONFIG.LAYOUT_OPTIONS.CERTIFICATION.LEFT_TO_RIGHT) {
             certDesc = "인증마크 좌→우";
         } else if (layoutConfig.certification === CONFIG.LAYOUT_OPTIONS.CERTIFICATION.RIGHT_TO_LEFT) {
@@ -1186,7 +1299,7 @@ var AutoDanggaAutomation = {
         return certDesc + ", " + addDesc;
     },
 
-    run: function() {
+    run: function () {
         try {
             Utils.log("오토단가 동적 자동화 시작");
 
@@ -1199,7 +1312,7 @@ var AutoDanggaAutomation = {
 
             var csvFile = File.openDialog("오토단가 동적 자동화 CSV 파일 선택", "*.csv");
             if (!csvFile) return;
-/////////
+            /////////
             // ✅ 안전한 CSV 파싱
             var csvResult = null;
             try {
@@ -1208,17 +1321,22 @@ var AutoDanggaAutomation = {
                 // CSV 파싱 오류 시 여기서 멈춤 (alert은 CSVParser에서 이미 표시)
                 return;
             }
-            
+
             // ✅ 결과 유효성 재검사
             if (!csvResult || !csvResult.data || !csvResult.headers) {
                 alert("❌ CSV 파싱 결과가 올바르지 않습니다.");
                 return;
             }
-            
+
             if (csvResult.data.length === 0) {
                 alert("❌ 처리할 상품 데이터가 없습니다!\n\nCSV 파일에 데이터 행이 있는지 확인하세요.");
                 return;
             }
+
+            // ✅ 에러 체커 실행
+            /*if (!ErrorChecker.runAllChecksAndAlert(templateLayer, csvResult.headers)) {
+            return;
+            }*/
 
             // ✅ UI 생성 전 데이터 검증
             var userInput = null;
@@ -1228,9 +1346,9 @@ var AutoDanggaAutomation = {
                 alert("❌ UI 생성 오류: " + uiError.message + "\n\nCSV 데이터 구조를 확인하세요.");
                 return;
             }
-            
+
             if (!userInput) return;
-///////////////////////
+            ///////////////////////
             var targetPage = userInput.page;
             var layoutConfig = userInput.layout;
             var productDataArray = this.getTargetPageData(csvResult.data, targetPage);
@@ -1256,14 +1374,18 @@ var AutoDanggaAutomation = {
             try {
                 var imgFolderPath = ImageLinker.getSiblingImageFolderPath(CONFIG.FOLDERS.IMG_FOLDER_NAME);
                 var imageResults = [];
-                
+
                 // ✅ 수정: 20개까지 이미지 처리
                 for (var m = 0; m < productDataArray.length; m++) {
                     var productNumber = m + 1;
                     var productGroup = GroupManager.findProductGroup(productNumber, templateLayer);
                     if (productGroup) {
-                        var imageResult = ImageLinker.processGroupImages(productGroup, targetPage, productNumber, imgFolderPath);
-                        imageResults.push("Product-" + productNumber + ": " + imageResult.details.join(", "));
+                        if (userInput.options.useImageUpdate) {
+                            var imageResult = ImageLinker.processGroupImages(productGroup, targetPage, productNumber, imgFolderPath);
+                            imageResults.push("Product-" + productNumber + ": " + imageResult.details.join(", "));
+                        } else {
+                            Utils.log("이미지 갱신 옵션: 적용안함. Product-" + productNumber + " 스킵됨");
+                        }
                     }
                 }
 
@@ -1273,7 +1395,7 @@ var AutoDanggaAutomation = {
                 successMessage += "🖼️ 이미지 처리:\n" + imageResults.join("\n") + "\n\n";
                 successMessage += "🎨 적용된 배치: " + layoutDescription;
                 alert(successMessage);
-                
+
             } catch (imgError) {
                 var partialSuccess = "⚠️ 부분 완료: 텍스트 처리 성공, 이미지 처리 오류\n\n";
                 partialSuccess += "📝 텍스트 업데이트: " + textUpdateCount + "개 그룹\n";

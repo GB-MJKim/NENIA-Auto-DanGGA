@@ -5,7 +5,7 @@
 
 // ===== CONFIG 설정 =====
 var CONFIG = {
-    VER: "v2.1",
+    VER: "v2.2",
     FOLDERS: {
         BASE_FOLDER_NAME: "작업파일",
         IMG_FOLDER_NAME: "img",
@@ -27,8 +27,8 @@ var CONFIG = {
         "설명란", "서브단가명", "서브단가", "메인단가명", "메인단가", "개당단가", "알러지"
     ],
     STORAGE_COLORS: {
-        "냉동": {c: 100, m: 40, y: 0, k: 0},
-        "냉장": {c: 90, m: 0, y: 90, k: 0},
+        "냉동": {c: 0, m: 0, y: 0, k: 100},
+        "냉장": {c: 0, m: 0, y: 0, k: 100},
         "상온": {c: 0, m: 0, y: 0, k: 100}
     },
     LAYOUT_OPTIONS: {
@@ -53,9 +53,71 @@ var CONFIG = {
         ADDITIONAL_TEXT: 5
     },
     IMAGE_EXTENSIONS: [".jpg", ".jpeg", ".png", ".PNG", ".JPG", ".JPEG"],
-    DEBUG_MODE: true,
+    DEBUG_MODE: false,
     // ✅ 최대 상품 개수 확장
     MAX_PRODUCTS: 20
+};
+
+// ===== 오류 진단 모듈 =====
+var ErrorChecker = {
+  // 상품 그룹명 중복 검사
+  checkProductGroupNameConflict: function(templateLayer) {
+    var groupNameCount = {};
+    var conflicts = [];
+    for (var i = 0; i < templateLayer.groupItems.length; i++) {
+      var group = templateLayer.groupItems[i];
+      if (typeof group.name === "string" && group.name.indexOf("Product-") === 0) {
+        if (!groupNameCount[group.name]) groupNameCount[group.name] = [];
+        groupNameCount[group.name].push(i + 1);
+      }
+    }
+    for (var name in groupNameCount) {
+      if (groupNameCount[name].length > 1) {
+        conflicts.push(name + " (" + groupNameCount[name].length + "개, 인덱스: " + groupNameCount[name].join(", ") + ")");
+      }
+    }
+    return conflicts; // 배열, 없으면 []
+  },
+
+  // CSV 필드 누락(TextFrame 등 없음)
+  findMissingFields: function(templateLayer, csvHeaders) {
+    var notFoundFields = [];
+    for (var h = 0; h < csvHeaders.length; h++) {
+      var field = csvHeaders[h];
+      var found = false;
+      // 첫 번째 Product-N 그룹에서만 검사해도 충분
+      for (var i = 0; i < templateLayer.groupItems.length; i++) {
+        var group = templateLayer.groupItems[i];
+        if (typeof group.name === "string" && group.name.indexOf("Product-") === 0) {
+          if (GroupManager.findTextFrameInGroup && GroupManager.findTextFrameInGroup(field, group)) {
+            found = true; break;
+          }
+        }
+      }
+      if (!found) notFoundFields.push(field);
+    }
+    return notFoundFields; // 없으면 []
+  },
+
+  // (향후 추가적인 진단은 여기에 계속 추가!)
+    
+  // ===== 종합체크 및 Alert =====
+  runAllChecksAndAlert: function(templateLayer, csvHeaders) {
+    var alertMessages = [];
+    var groupConflicts = this.checkProductGroupNameConflict(templateLayer);
+    if (groupConflicts.length > 0)
+      alertMessages.push("상품 그룹명 중복 :\n" + groupConflicts.join("\n"));
+    var missingFields = this.findMissingFields(templateLayer, csvHeaders);
+    if (missingFields.length > 0)
+      alertMessages.push("CSV에는 있는데 템플릿에 없는 필드:\n- " + missingFields.join("\n- "));
+    // ... 추가진단 결과 있으면 이어 붙임
+
+    if (alertMessages.length > 0) {
+      alert("[템플릿/CSV 구조 점검]\n\n" + alertMessages.join("\n\n") + "\n\n⚠️ 오류 수정 후 재실행하세요.");
+      return false;
+    }
+    return true;
+  }
 };
 
 // ===== UTILS 모듈 (ExtendScript 호환) =====
@@ -147,6 +209,41 @@ var EnhancedUI = {
 
             var availablePagesText = pagePanel.add("statictext", undefined,
                 "사용 가능: " + (availablePages ? Utils.arrayToString(availablePages, ", ") : "없음"));
+
+            // 사진/문구/가격 옵션 패널
+            var updatePanel = dialog.add("panel", undefined, "자동 적용 옵션");
+            updatePanel.orientation = "column";
+            updatePanel.alignChildren = ["left", "top"];
+            updatePanel.margins = 12;
+
+            // 사진 옵션 (default 적용함)
+            var imgGroup = updatePanel.add("group");
+            imgGroup.orientation = "row";
+            imgGroup.alignChildren = ["left", "center"];
+            imgGroup.add("statictext", undefined, "사진 적용:");
+            var imgNo = imgGroup.add("radiobutton", undefined, "적용안함");
+            var imgYes = imgGroup.add("radiobutton", undefined, "적용함");
+            imgNo.value = true;
+
+            // 문구 옵션 (default 적용함)
+            var textGroup = updatePanel.add("group");
+            textGroup.orientation = "row";
+            textGroup.alignChildren = ["left", "center"];
+            textGroup.add("statictext", undefined, "문구 수정:");
+            var textNo = textGroup.add("radiobutton", undefined, "적용안함");
+            var textYes = textGroup.add("radiobutton", undefined, "적용함");
+            textNo.value = true;
+
+            // 가격 옵션 (default 적용함)
+            var priceGroup = updatePanel.add("group");
+            priceGroup.orientation = "row";
+            priceGroup.alignChildren = ["left", "center"];
+            priceGroup.add("statictext", undefined, "가격 수정:");
+            var priceNo = priceGroup.add("radiobutton", undefined, "적용안함");
+            var priceYes = priceGroup.add("radiobutton", undefined, "적용함");
+            priceYes.value = true;
+
+
 
             // NEW, 인증마크, 상품태그 적용 여부
             var dynPanel = dialog.add("panel", undefined, "동적요소(NEW, 인증마크, 상품태그) 적용 옵션");
@@ -318,7 +415,12 @@ var EnhancedUI = {
                         certification: certLayout,
                         additionalText: tagLayout
                     },
-                    options: { useDynamicElements: radioYes.value }
+                    options: {
+                        useDynamicElements: radioYes.value,
+                        useImageUpdate: imgYes.value,
+                        useTextUpdate: textYes.value,
+                        usePriceUpdate: priceYes.value
+                     }
                 };
             }
 
@@ -928,22 +1030,33 @@ var TextProcessor = {
         }
     },
 
-    updateBasicFields: function(productGroup, productData) {
+    updateBasicFields: function(productGroup, productData, options) {
+
         Utils.log('기본 필드 업데이트: ' + productGroup.name);
+        var textFields = ["타이틀", "상품명", "용량", "원재료", "설명란"];
+        var priceFields = ["보관방법", "서브단가", "메인단가", "개당단가", "알러지", "메인단가명", "서브단가명"];
         
         for (var i = 0; i < CONFIG.BASIC_FIELDS.length; i++) {
             var fieldName = CONFIG.BASIC_FIELDS[i];
             var textFrame = GroupManager.findTextFrameInGroup(fieldName, productGroup);
-            
-            if (textFrame) {
-                var value = productData[fieldName] || '';
+            if (!textFrame) continue;
+
+            var value = productData[fieldName] || '';
+
+            // 문구 수정
+            if (options.useTextUpdate && Utils.arrayContains(textFields, fieldName)) {
                 textFrame.contents = value;
-                Utils.log(fieldName + ' 업데이트: ' + value);
-                
+            }
+            // 가격 관련 필드
+            else if (options.usePriceUpdate && Utils.arrayContains(priceFields, fieldName)) {
+                textFrame.contents = value;
                 if (fieldName === '보관방법' && value) {
-                    this.applyStorageColor(textFrame, value);
+                this.applyStorageColor(textFrame, value);
                 }
             }
+            // 그 외 항목은 그대로 유지 (skip)
+
+            Utils.log(fieldName + ' 업데이트: ' + value);
         }
     }
 };
@@ -1109,7 +1222,7 @@ var AutoDanggaAutomation = {
             return false;
         }
 
-        TextProcessor.updateBasicFields(productGroup, productData);
+        TextProcessor.updateBasicFields(productGroup, productData, options);
         DynamicProcessor.processDynamicFields(productGroup, productData, headers, layoutConfig, options);
         
         Utils.log("=== 상품 그룹 " + productNumber + " 업데이트 완료 ===");
@@ -1220,6 +1333,11 @@ var AutoDanggaAutomation = {
                 return;
             }
 
+            // ✅ 에러 체커 실행
+            /*if (!ErrorChecker.runAllChecksAndAlert(templateLayer, csvResult.headers)) {
+            return;
+            }*/
+
             // ✅ UI 생성 전 데이터 검증
             var userInput = null;
             try {
@@ -1262,8 +1380,12 @@ var AutoDanggaAutomation = {
                     var productNumber = m + 1;
                     var productGroup = GroupManager.findProductGroup(productNumber, templateLayer);
                     if (productGroup) {
-                        var imageResult = ImageLinker.processGroupImages(productGroup, targetPage, productNumber, imgFolderPath);
-                        imageResults.push("Product-" + productNumber + ": " + imageResult.details.join(", "));
+                        if (userInput.options.useImageUpdate){
+                            var imageResult = ImageLinker.processGroupImages(productGroup, targetPage, productNumber, imgFolderPath);
+                            imageResults.push("Product-" + productNumber + ": " + imageResult.details.join(", "));
+                        } else {
+                            Utils.log("이미지 갱신 옵션: 적용안함. Product-" + productNumber + " 스킵됨");
+                        }
                     }
                 }
 
